@@ -99,8 +99,8 @@
       }
       .label-card {
         border: 1.5px solid #166534 !important;
-        border-radius: 6px !important;
-        padding: 2mm 2.5mm !important;
+        border-radius: 4px !important;
+        padding: 1mm 2mm 1mm 2mm !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
@@ -604,14 +604,24 @@
           </div>
         </div>
 
-        <!-- Selector de tipo de código (Barras / QR / Ambos) -->
-        <div class="flex items-center gap-2">
-          <label for="print-code-type" class="text-xs font-semibold text-slate-600">Tipo de Código:</label>
-          <select id="print-code-type" onchange="regeneratePrintLabels()" class="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
-            <option value="barcode" selected>📊 Código de Barras (Code 128)</option>
-            <option value="qr">📱 Código QR</option>
-            <option value="both">⚡ Ambos (Barras + QR)</option>
-          </select>
+        <!-- Selector de tipo de código y cantidad de copias -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-1.5">
+            <label for="print-code-type" class="text-xs font-semibold text-slate-600">Tipo de Código:</label>
+            <select id="print-code-type" onchange="regeneratePrintLabels()" class="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
+              <option value="barcode" selected>Código de barras</option>
+              <option value="qr">Código QR</option>
+              <option value="both">Ambos códigos</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <label for="print-copies-input" class="text-xs font-semibold text-slate-600">Copias:</label>
+            <input type="number" id="print-copies-input" min="1" max="100" value="1" onchange="changePrintCopies(this.value)" class="w-14 bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 text-center focus:ring-2 focus:ring-emerald-500">
+            <button type="button" id="btn-fill-sheet" onclick="fillSheetWithSingle()" class="hidden px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition">
+              <i class="fa-solid fa-table-cells mr-1"></i> Llenar hoja (10)
+            </button>
+          </div>
         </div>
 
         <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">

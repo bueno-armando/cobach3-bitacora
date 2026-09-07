@@ -1,0 +1,9 @@
+*.xls
+*.xlsx
+*.db
+*.sqlite3
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.env

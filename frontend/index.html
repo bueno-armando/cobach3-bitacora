@@ -165,70 +165,59 @@
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
   <!-- ENCABEZADO INSTITUCIONAL OPACO (SIN TRANSPARENCIAS) -->
-  <header class="header-solid text-white shadow-xl sticky top-0 z-40 border-b border-emerald-950">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+  <!-- ENCABEZADO INSTITUCIONAL COMPACTO Y MINIMALISTA -->
+  <header class="header-solid text-white shadow-md sticky top-0 z-40 border-b border-emerald-950">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Logos y Título -->
-      <div class="flex items-center space-x-3.5">
-        <div class="bg-white rounded-xl p-1.5 shadow-md flex items-center justify-center h-12 w-12 flex-shrink-0">
-          <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Logo Halcón Plantel 3" class="h-10 w-auto object-contain">
+      <!-- Logo y Título -->
+      <div class="flex items-center space-x-2.5">
+        <div class="bg-white rounded-lg p-1 shadow-xs flex items-center justify-center h-9 w-9 flex-shrink-0">
+          <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
         </div>
-        <div class="h-10 w-[1px] bg-emerald-700/60 hidden sm:block"></div>
-        <div class="bg-white/10 rounded-xl p-1.5 flex items-center justify-center h-12 w-12 flex-shrink-0 hidden sm:flex">
-          <img src="/assets/Logotipo_COBACH.png" alt="Logo General COBACH" class="h-9 w-auto object-contain">
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-bold uppercase tracking-wider bg-emerald-950 px-2 py-0.5 rounded text-emerald-300 border border-emerald-700">PLANTEL 3</span>
-            <span class="text-xs text-emerald-200">Chihuahua, Chih.</span>
-          </div>
-          <h1 class="text-lg sm:text-xl font-bold tracking-tight">Sistema de Control y Consulta de Inventario</h1>
-          <p class="text-xs text-emerald-200 hidden sm:block">Colegio de Bachilleres del Estado de Chihuahua</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Inventario COBACH Plantel 3</h1>
+          <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-700 hidden sm:inline">Chihuahua</span>
         </div>
       </div>
 
-      <!-- Quick KPI Stats in Header + Botón Nuevo Activo -->
-      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-        <div class="bg-emerald-950/70 border border-emerald-700 rounded-lg px-3 py-1 text-center">
-          <span class="text-emerald-300 block text-[9px] uppercase font-semibold">Total</span>
-          <span id="stat-total" class="text-sm sm:text-base font-bold text-white">-</span>
-        </div>
-        <div class="bg-emerald-950/70 border border-emerald-700 rounded-lg px-3 py-1 text-center">
-          <span class="text-emerald-300 block text-[9px] uppercase font-semibold">Oficiales</span>
-          <span id="stat-oficial" class="text-sm sm:text-base font-bold text-emerald-300">-</span>
-        </div>
-        <div class="bg-amber-950/70 border border-amber-600/70 rounded-lg px-3 py-1 text-center">
-          <span class="text-amber-200 block text-[9px] uppercase font-semibold">Pendientes</span>
-          <span id="stat-pendientes" class="text-sm sm:text-base font-bold text-amber-300">-</span>
-        </div>
+      <!-- Métricas Rápidas (KPIs Integrados en Cápsula Compacta) -->
+      <div class="bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-1 flex items-center gap-2 sm:gap-3 text-xs">
+        <span class="text-slate-300">Total: <strong id="stat-total" class="text-white font-bold">-</strong></span>
+        <span class="text-emerald-700">•</span>
+        <span class="text-emerald-300">Oficiales: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
+        <span class="text-emerald-700">•</span>
+        <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
+      </div>
 
+      <!-- Acciones Principales -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
         <button 
           onclick="openPrintQueueModal()" 
           id="btn-open-queue"
-          class="btn-pop px-3.5 py-2 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2"
+          class="btn-pop px-3 py-1.5 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
           title="Ver activos en la cola de impresión"
         >
           <i class="fa-solid fa-tags text-emerald-400"></i>
-          <span class="hidden md:inline">Cola de Impresión</span>
-          <span id="queue-badge" class="bg-emerald-600 text-emerald-100 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none">0</span>
+          <span class="hidden md:inline">Cola</span>
+          <span id="queue-badge" class="bg-emerald-600 text-emerald-100 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">0</span>
         </button>
 
         <button 
           onclick="openExportModal()" 
           id="btn-open-export"
-          class="btn-pop px-3.5 py-2 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2"
+          class="btn-pop px-3 py-1.5 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
           title="Exportar inventario a Excel (.xlsx)"
         >
           <i class="fa-solid fa-file-excel text-emerald-400"></i>
-          <span class="hidden md:inline">Exportar Excel</span>
+          <span class="hidden md:inline">Exportar</span>
         </button>
 
         <button 
           onclick="openCreateModal()" 
-          class="btn-pop px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 ml-1"
+          class="btn-pop px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 ml-0.5"
         >
-          <i class="fa-solid fa-plus text-sm"></i>
-          <span class="hidden sm:inline">Nuevo Activo</span>
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Nuevo</span>
         </button>
       </div>
 
@@ -236,139 +225,118 @@
 
     <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, C.A., INVENTARIO GENERAL) -->
     <nav class="bg-emerald-950/90 border-t border-emerald-900">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-2 py-1.5">
-        <button onclick="setTab('')" id="tab-all" class="tab-btn btn-pop px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap bg-white text-emerald-950 shadow">
-          <i class="fa-solid fa-layer-group mr-1.5"></i> Todos los Activos
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-1.5 py-1">
+        <button onclick="setTab('')" id="tab-all" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap bg-white text-emerald-950 shadow-xs">
+          <i class="fa-solid fa-layer-group mr-1"></i> Todos
         </button>
-        <button onclick="setTab('GASTO')" id="tab-gasto" class="tab-btn btn-pop px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-receipt mr-1.5"></i> GASTO (GTO)
+        <button onclick="setTab('GASTO')" id="tab-gasto" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-receipt mr-1"></i> GASTO (GTO)
         </button>
-        <button onclick="setTab('C.A.')" id="tab-ca" class="tab-btn btn-pop px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-users-gear mr-1.5"></i> C.A.
+        <button onclick="setTab('C.A.')" id="tab-ca" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-users-gear mr-1"></i> C.A.
         </button>
-        <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-tags mr-1.5 text-amber-400"></i> Pendientes de Etiqueta Verde
+        <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-tags mr-1 text-amber-400"></i> Pendientes Etiqueta
         </button>
-        <button onclick="setTab('CENTRAL')" id="tab-central" class="tab-btn btn-pop px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-building-columns mr-1.5"></i> Oficina Central
+        <button onclick="setTab('CENTRAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-building-columns mr-1"></i> Oficina Central
         </button>
       </div>
     </nav>
   </header>
 
   <!-- CONTENEDOR PRINCIPAL -->
-  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex-1">
 
-    <!-- SECCIÓN DE BÚSQUEDA Y FILTROS -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
+    <!-- BARRA MINIMALISTA DE BÚSQUEDA Y FILTROS (SIN BOTÓN REDUNDANTE) -->
+    <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-2.5 mb-4">
+      <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2">
         
-        <!-- Campo ACTIVO / CÓDIGO / SERIE -->
-        <div class="md:col-span-4">
-          <label for="search-input" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-            <i class="fa-solid fa-barcode text-emerald-700 mr-1"></i> Buscar Activo / Código / Serie
-          </label>
-          <div class="relative">
-            <input 
-              type="text" 
-              id="search-input" 
-              placeholder="Ej. 242, VND3S78861, Impresora, PL3-GTO-0001..." 
-              class="w-full pl-9 pr-9 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
-              onkeydown="if(event.key==='Enter') applyFilters()"
-            >
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
-              <i class="fa-solid fa-magnifying-glass"></i>
-            </div>
-            <button 
-              id="clear-search-btn" 
-              onclick="clearSearchInput()" 
-              class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-            >
-              <i class="fa-solid fa-circle-xmark text-xs"></i>
-            </button>
+        <!-- Campo de Búsqueda Rápida -->
+        <div class="relative flex-1 min-w-[200px]">
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Buscar por código, descripción, serie, modelo..." 
+            class="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
+            onkeydown="if(event.key==='Enter') applyFilters()"
+            oninput="debounceSearch()"
+          >
+          <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400 text-xs">
+            <i class="fa-solid fa-magnifying-glass"></i>
           </div>
+          <button 
+            id="clear-search-btn" 
+            onclick="clearSearchInput()" 
+            class="hidden absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600"
+            title="Limpiar texto"
+          >
+            <i class="fa-solid fa-circle-xmark text-xs"></i>
+          </button>
         </div>
 
-        <!-- Filtro UBICACIÓN FÍSICA -->
-        <div class="md:col-span-3">
-          <label for="filter-ubicacion" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-            <i class="fa-solid fa-location-dot text-emerald-700 mr-1"></i> Ubicación Física
-          </label>
+        <!-- Filtros desplegables instantáneos -->
+        <div class="flex items-center gap-2 flex-wrap">
           <select 
             id="filter-ubicacion" 
             onchange="applyFilters()" 
-            class="w-full py-2 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
+            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 max-w-[170px]"
+            title="Filtrar por ubicación física"
           >
-            <option value="">Todas las ubicaciones</option>
+            <option value="">Ubicación: Todas</option>
           </select>
-        </div>
 
-        <!-- Filtro CATEGORÍA -->
-        <div class="md:col-span-2">
-          <label for="filter-categoria" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-            <i class="fa-solid fa-folder-tree text-emerald-700 mr-1"></i> Categoría
-          </label>
           <select 
             id="filter-categoria" 
             onchange="applyFilters()" 
-            class="w-full py-2 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition"
+            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 max-w-[150px]"
+            title="Filtrar por categoría"
           >
-            <option value="">Todas</option>
+            <option value="">Categoría: Todas</option>
           </select>
-        </div>
 
-        <!-- Filtro ESTADO OPERATIVO (Operativo, En desuso, En reparación) -->
-        <div class="md:col-span-2">
-          <label for="filter-estatus-operativo" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
-            <i class="fa-solid fa-heart-pulse text-emerald-700 mr-1"></i> Estado Físico
-          </label>
           <select 
             id="filter-estatus-operativo" 
             onchange="applyFilters()" 
-            class="w-full py-2 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition font-medium"
+            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 font-medium"
+            title="Filtrar por estado físico del activo"
           >
-            <option value="">Todos los estados</option>
+            <option value="">Estado: Todos</option>
             <option value="OPERATIVO">🟢 Operativo</option>
-            <option value="EN_DESUSO">🔴 En Desuso / Descarte</option>
+            <option value="EN_DESUSO">🔴 En Desuso</option>
             <option value="EN_REPARACION">🟡 En Reparación</option>
             <option value="BAJA">⚪ Baja Oficial</option>
           </select>
-        </div>
 
-        <!-- Botones de Acción -->
-        <div class="md:col-span-1 flex items-center gap-1.5">
-          <button 
-            onclick="applyFilters()" 
-            title="Aplicar filtros" 
-            class="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-medium text-xs sm:text-sm transition shadow flex items-center justify-center"
-          >
-            <i class="fa-solid fa-filter"></i>
-          </button>
+          <!-- Botón Restablecer / Limpiar Filtros -->
           <button 
             onclick="resetAllFilters()" 
+            id="btn-reset-filters"
             title="Restablecer filtros" 
-            class="py-2 px-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium text-xs sm:text-sm transition"
+            class="py-1.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition flex items-center gap-1"
           >
             <i class="fa-solid fa-rotate-left"></i>
+            <span class="hidden sm:inline">Limpiar</span>
           </button>
         </div>
 
-      </div>
+        <!-- Divisor y Contador de Resultados / Filas -->
+        <div class="flex items-center justify-between md:justify-end gap-2.5 ml-auto border-t md:border-t-0 md:border-l border-slate-200 pt-1.5 md:pt-0 md:pl-2.5 text-xs">
+          <div class="flex items-center gap-1.5 whitespace-nowrap">
+            <span id="results-count" class="font-semibold text-slate-700 text-[11px]">Cargando...</span>
+            <span id="active-filter-badge" class="hidden px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 font-medium text-[10px]"></span>
+          </div>
 
-      <!-- Barra de Estado de Filtro y Contador -->
-      <div class="mt-3.5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
-        <div class="flex items-center gap-2">
-          <span id="results-count" class="font-semibold text-slate-700">Cargando activos...</span>
-          <span id="active-filter-badge" class="hidden px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-medium"></span>
+          <div class="flex items-center gap-1">
+            <label for="limit-select" class="text-slate-400 text-[11px]">Filas:</label>
+            <select id="limit-select" onchange="changeLimit()" class="bg-slate-50 border border-slate-300 rounded-lg px-1.5 py-1 text-xs">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <label for="limit-select" class="text-slate-500">Filas:</label>
-          <select id="limit-select" onchange="changeLimit()" class="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-xs">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
+
       </div>
     </div>
 
@@ -457,19 +425,26 @@
   </main>
 
   <!-- MODAL: REGISTRAR / EDITAR ACTIVO (CRUD) -->
-  <div id="modal-asset-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-y-auto border border-slate-200 animate-in fade-in zoom-in duration-150">
-      <div class="bg-emerald-900 text-white px-6 py-3.5 flex items-center justify-between sticky top-0 z-10">
-        <div class="flex items-center space-x-2.5">
-          <i id="asset-form-icon" class="fa-solid fa-plus-circle text-amber-400 text-lg"></i>
-          <h3 id="asset-form-title" class="text-base font-bold">Registrar Nuevo Activo</h3>
+  <div id="modal-asset-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      
+      <!-- Standard Modal Header -->
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-base flex-shrink-0">
+            <i id="asset-form-icon" class="fa-solid fa-plus text-amber-700"></i>
+          </div>
+          <div>
+            <h3 id="asset-form-title" class="text-sm sm:text-base font-bold text-slate-900">Registrar Nuevo Activo</h3>
+            <p class="text-[11px] text-slate-500">Captura de información técnica y ciclo de vida</p>
+          </div>
         </div>
-        <button onclick="closeAssetFormModal()" class="text-emerald-300 hover:text-white p-1 text-lg">
+        <button onclick="closeAssetFormModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-lg transition text-base">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <form id="form-asset" onsubmit="submitAssetForm(event)" class="p-6 space-y-4 text-xs">
+      <form id="form-asset" onsubmit="submitAssetForm(event)" class="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
         <input type="hidden" id="asset-form-id">
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -573,30 +548,36 @@
   </div>
 
   <!-- MODAL: DETALLE COMPLETO DEL ACTIVO -->
-  <div id="modal-detail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-100 animate-in fade-in zoom-in duration-150">
+  <div id="modal-detail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
       
-      <!-- Modal Header -->
-      <div class="bg-slate-50 px-6 py-3.5 border-b border-slate-200 flex items-center justify-between sticky top-0 z-10">
-        <div>
-          <div class="flex items-center gap-2">
-            <span id="modal-detail-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-md"></span>
-            <span id="modal-detail-operativo-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-md"></span>
+      <!-- Standard Modal Header -->
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center text-base flex-shrink-0">
+            <i class="fa-solid fa-circle-info"></i>
           </div>
-          <h3 id="modal-detail-title" class="text-base sm:text-lg font-bold text-slate-800 mt-1">Detalle del Activo</h3>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="modal-detail-title" class="text-sm sm:text-base font-bold text-slate-900">Detalle del Activo</h3>
+              <span id="modal-detail-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-md"></span>
+              <span id="modal-detail-operativo-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-md"></span>
+            </div>
+            <p class="text-[11px] text-slate-500">Ficha técnica y trazabilidad del bien</p>
+          </div>
         </div>
-        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-2 text-lg">
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-lg transition text-base">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
       <!-- Modal Body -->
-      <div class="p-6 space-y-4 text-xs sm:text-sm" id="modal-detail-content"></div>
+      <div class="p-5 sm:p-6 space-y-4 text-xs sm:text-sm overflow-y-auto flex-1" id="modal-detail-content"></div>
 
       <!-- Modal Footer -->
-      <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between gap-2">
+      <div class="bg-slate-50/90 px-5 py-3 border-t border-slate-200 flex items-center justify-between gap-2 flex-shrink-0">
         <div class="flex items-center gap-2" id="modal-detail-actions"></div>
-        <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl text-xs transition">
+        <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition">
           Cerrar
         </button>
       </div>
@@ -604,71 +585,82 @@
   </div>
 
   <!-- MODAL: ASIGNAR ETIQUETA VERDE OFICIAL -->
-  <div id="modal-tag" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 p-6 animate-in fade-in zoom-in duration-150">
-      <div class="flex items-center space-x-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg font-bold">
-          <i class="fa-solid fa-tag"></i>
+  <div id="modal-tag" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      
+      <!-- Standard Modal Header -->
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base flex-shrink-0">
+            <i class="fa-solid fa-tag text-emerald-700"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">Registrar Etiqueta Verde</h3>
+            <p class="text-[11px] text-slate-500">Conciliación con Bienes Patrimoniales</p>
+          </div>
         </div>
-        <div>
-          <h3 class="text-base font-bold text-slate-800">Registrar Etiqueta Verde</h3>
-          <p class="text-xs text-slate-500">Conciliación con Bienes Patrimoniales</p>
-        </div>
+        <button onclick="closeTagModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-lg transition text-base">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
-      <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 mb-4">
-        <p class="font-semibold" id="modal-tag-desc">Activo a etiquetar</p>
-        <p class="text-[11px] text-amber-700 mt-0.5" id="modal-tag-meta">Código Interno: -</p>
-      </div>
+      <form id="form-tag" onsubmit="submitTag(event)" class="flex flex-col flex-1 overflow-hidden">
+        <div class="p-5 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
+          <input type="hidden" id="tag-activo-id">
 
-      <form id="form-tag" onsubmit="submitTag(event)" class="space-y-4">
-        <input type="hidden" id="tag-activo-id">
-        <div>
-          <label for="input-codigo-oficial" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-            Número de Etiqueta Verde (Código Oficial) *
-          </label>
-          <input 
-            type="text" 
-            id="input-codigo-oficial" 
-            required 
-            placeholder="Ej. 41205" 
-            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-          <p class="text-[11px] text-slate-400 mt-1">El número impreso en el sticker verde colocado físicamente en el activo.</p>
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+            <p class="font-semibold" id="modal-tag-desc">Activo a etiquetar</p>
+            <p class="text-[11px] text-amber-700 mt-0.5" id="modal-tag-meta">Código Interno: -</p>
+          </div>
+
+          <div>
+            <label for="input-codigo-oficial" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Número de Etiqueta Verde (Código Oficial) *
+            </label>
+            <input 
+              type="text" 
+              id="input-codigo-oficial" 
+              required 
+              placeholder="Ej. 41205" 
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold text-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            >
+            <p class="text-[11px] text-slate-400 mt-1">El número impreso en el sticker verde colocado físicamente en el activo.</p>
+          </div>
+
+          <div>
+            <label for="input-tag-responsable" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Registrado por
+            </label>
+            <input 
+              type="text" 
+              id="input-tag-responsable" 
+              value="Encargado de Informática Plantel 3" 
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            >
+          </div>
+
+          <div>
+            <label for="input-tag-notas" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+              Observaciones / Notas (Opcional)
+            </label>
+            <textarea 
+              id="input-tag-notas" 
+              rows="2" 
+              placeholder="Ej. Etiqueta colocada durante revisión semestral de Bienes Patrimoniales." 
+              class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            ></textarea>
+          </div>
+
+          <div id="tag-error" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
         </div>
 
-        <div>
-          <label for="input-tag-responsable" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-            Registrado por
-          </label>
-          <input 
-            type="text" 
-            id="input-tag-responsable" 
-            value="Encargado de Informática Plantel 3" 
-            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-        </div>
-
-        <div>
-          <label for="input-tag-notas" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
-            Observaciones / Notas (Opcional)
-          </label>
-          <textarea 
-            id="input-tag-notas" 
-            rows="2" 
-            placeholder="Ej. Etiqueta colocada durante revisión semestral de Bienes Patrimoniales." 
-            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          ></textarea>
-        </div>
-
-        <div id="tag-error" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
-
-        <div class="flex items-center justify-end gap-2 pt-2">
-          <button type="button" onclick="closeTagModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+        <!-- Modal Footer -->
+        <div class="bg-slate-50/90 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 flex-shrink-0">
+          <button type="button" onclick="closeTagModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition btn-pop">
             Cancelar
           </button>
-          <button type="submit" id="btn-submit-tag" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold transition shadow-sm flex items-center">
-            <i class="fa-solid fa-check mr-1.5"></i> Guardar Etiqueta
+          <button type="submit" id="btn-submit-tag" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 btn-pop">
+            <i class="fa-solid fa-check"></i> Guardar Etiqueta
           </button>
         </div>
       </form>
@@ -676,14 +668,14 @@
   </div>
 
   <!-- MODAL: VISTA DE IMPRESIÓN DE HOJA DE ETIQUETAS (10 POR HOJA CARTA) -->
-  <div id="modal-print" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[94vh] overflow-y-auto border border-slate-200 p-4 sm:p-6 animate-in fade-in zoom-in duration-150">
+  <div id="modal-print" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[94vh] overflow-y-auto border border-slate-200/80 p-4 sm:p-6 animate-in fade-in zoom-in duration-150">
       
       <!-- Controles Superiores (no se imprimen) -->
       <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 mb-4 gap-3 no-print">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base">
-            <i class="fa-solid fa-print"></i>
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base flex-shrink-0">
+            <i class="fa-solid fa-print text-emerald-700"></i>
           </div>
           <div>
             <h3 class="text-sm font-bold text-slate-800">Hoja de Etiquetas de Inventario</h3>
@@ -704,7 +696,7 @@
           <div class="flex items-center gap-1.5">
             <label for="print-copies-input" class="text-xs font-semibold text-slate-600">Copias:</label>
             <input type="number" id="print-copies-input" min="1" max="100" value="1" onchange="changePrintCopies(this.value)" class="w-14 bg-slate-50 border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 text-center focus:ring-2 focus:ring-emerald-500">
-            <button type="button" id="btn-fill-sheet" onclick="fillSheetWithSingle()" class="hidden px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition">
+            <button type="button" id="btn-fill-sheet" onclick="fillSheetWithSingle()" class="hidden px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition btn-pop">
               <i class="fa-solid fa-table-cells mr-1"></i> Llenar hoja (10)
             </button>
           </div>
@@ -718,7 +710,7 @@
           </div>
         </div>
 
-        <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">
+        <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition text-base">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -730,7 +722,7 @@
           <span class="text-[11px] text-emerald-700 font-medium"><i class="fa-solid fa-file-lines mr-1"></i> Aprox. <span id="print-pages-count">1</span> página(s) Carta</span>
         </div>
         <div class="flex items-center gap-2">
-          <button type="button" id="btn-toggle-queue-panel" onclick="toggleQueuePanel()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
+          <button type="button" id="btn-toggle-queue-panel" onclick="toggleQueuePanel()" class="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1 btn-pop">
             <i class="fa-solid fa-list-check"></i> <span id="toggle-queue-panel-text">Ver / Editar Lista</span>
           </button>
         </div>
@@ -743,11 +735,11 @@
             <i class="fa-solid fa-layer-group text-emerald-600"></i> Lista de Activos a Imprimir
           </h4>
           <div class="flex items-center gap-2">
-            <button onclick="exportQueueToExcel()" class="text-xs text-emerald-700 hover:text-emerald-900 font-semibold transition flex items-center gap-1">
+            <button onclick="exportQueueToExcel()" class="text-xs text-emerald-700 hover:text-emerald-900 font-semibold transition flex items-center gap-1 btn-pop">
               <i class="fa-solid fa-file-excel"></i> Descargar Excel
             </button>
             <span class="text-slate-300">|</span>
-            <button onclick="clearPrintQueue()" class="text-xs text-red-600 hover:text-red-800 font-semibold transition flex items-center gap-1">
+            <button onclick="clearPrintQueue()" class="text-xs text-red-600 hover:text-red-800 font-semibold transition flex items-center gap-1 btn-pop">
               <i class="fa-solid fa-trash-can"></i> Vaciar cola
             </button>
           </div>
@@ -766,10 +758,10 @@
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-slate-200 pt-4 mt-4 gap-3 no-print">
         <span class="text-[11px] text-slate-500">💡 <strong>Tip para Firefox y Chrome:</strong> En la ventana de impresión, abre <em>Más ajustes</em> y desmarca <em>"Encabezados y pies de página"</em> para que no se imprima la URL ni la fecha en los márgenes.</span>
         <div class="flex items-center gap-2">
-          <button type="button" onclick="closePrintModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+          <button type="button" onclick="closePrintModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition btn-pop">
             Cerrar
           </button>
-          <button type="button" onclick="window.print()" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
+          <button type="button" onclick="window.print()" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5 btn-pop">
             <i class="fa-solid fa-print"></i> Imprimir Hoja(s)
           </button>
         </div>
@@ -779,46 +771,49 @@
   </div>
 
   <!-- MODAL: CONFIRMAR ELIMINACIÓN -->
-  <div id="modal-delete" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-100 p-6 animate-in fade-in zoom-in duration-150 text-center">
-      <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3 text-xl">
+  <div id="modal-delete" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full border border-slate-200/80 p-6 animate-in fade-in zoom-in duration-150 text-center">
+      <div class="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3 text-xl shadow-xs">
         <i class="fa-solid fa-triangle-exclamation"></i>
       </div>
-      <h3 class="text-base font-bold text-slate-800 mb-1">¿Eliminar este Activo?</h3>
-      <p class="text-xs text-slate-500 mb-4" id="modal-delete-desc">Esta acción eliminará el registro del activo y su historial de etiquetas.</p>
+      <h3 class="text-base font-bold text-slate-900 mb-1">¿Eliminar este Activo?</h3>
+      <p class="text-xs text-slate-500 mb-5 leading-relaxed" id="modal-delete-desc">Esta acción eliminará el registro del activo y su historial de etiquetas.</p>
       
-      <div class="flex items-center justify-center gap-2">
-        <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+      <div class="flex items-center justify-center gap-2.5">
+        <button type="button" onclick="closeDeleteModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition btn-pop">
           Cancelar
         </button>
-        <button type="button" id="btn-confirm-delete" onclick="confirmDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow">
-          Sí, Eliminar
+        <button type="button" id="btn-confirm-delete" onclick="confirmDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 btn-pop">
+          <i class="fa-solid fa-trash-can"></i> Sí, Eliminar
         </button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: EXPORTAR A EXCEL -->
-  <div id="modal-export" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 p-6 animate-in fade-in zoom-in duration-150">
-      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
-            <i class="fa-solid fa-file-excel"></i>
+  <div id="modal-export" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      
+      <!-- Standard Modal Header -->
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base flex-shrink-0">
+            <i class="fa-solid fa-file-excel text-emerald-700"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-slate-800">Exportar a Excel (.xlsx)</h3>
-            <p class="text-[11px] text-slate-400">Descarga reportes listos para auditoría y consulta</p>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">Exportar a Excel (.xlsx)</h3>
+            <p class="text-[11px] text-slate-500">Descarga reportes listos para auditoría y consulta</p>
           </div>
         </div>
-        <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">
+        <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-lg transition text-base">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <div class="space-y-3 my-4">
+      <!-- Modal Body -->
+      <div class="p-5 sm:p-6 space-y-3 overflow-y-auto flex-1">
         <!-- Opción 1: Vista / Filtro actual (si hay filtros) -->
-        <div id="export-opt-filtered" class="p-3.5 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl hover:bg-emerald-50 transition cursor-pointer" onclick="downloadExcelFiltered()">
+        <div id="export-opt-filtered" class="p-3.5 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl hover:bg-emerald-50 transition cursor-pointer btn-pop" onclick="downloadExcelFiltered()">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-filter text-emerald-600 text-base"></i>
@@ -834,7 +829,7 @@
         </div>
 
         <!-- Opción 2: Base de Datos Completa -->
-        <div class="p-3.5 border border-slate-200 bg-slate-50/50 rounded-xl hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer" onclick="downloadExcelAll()">
+        <div class="p-3.5 border border-slate-200 bg-slate-50/50 rounded-xl hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer btn-pop" onclick="downloadExcelAll()">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-database text-slate-600 text-base"></i>
@@ -850,7 +845,7 @@
         </div>
 
         <!-- Opción 3: Cola de Impresión (si tiene elementos) -->
-        <div id="export-opt-queue" class="hidden p-3.5 border border-slate-200 bg-slate-50/50 rounded-xl hover:bg-slate-100 transition cursor-pointer" onclick="exportQueueToExcel()">
+        <div id="export-opt-queue" class="hidden p-3.5 border border-slate-200 bg-slate-50/50 rounded-xl hover:bg-slate-100 transition cursor-pointer btn-pop" onclick="exportQueueToExcel()">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-tags text-blue-600 text-base"></i>
@@ -866,9 +861,11 @@
         </div>
       </div>
 
-      <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-500 flex items-center gap-2">
-        <i class="fa-solid fa-circle-info text-emerald-600 text-xs"></i>
-        <span>Los archivos se descargan con formato estándar <strong>Inventario_COBACH3_[Ámbito]_[Fecha].xlsx</strong> con autofiltros y cabecera institucional.</span>
+      <!-- Modal Footer -->
+      <div class="bg-slate-50/90 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 flex-shrink-0">
+        <button type="button" onclick="closeExportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition btn-pop">
+          Cerrar
+        </button>
       </div>
     </div>
   </div>

@@ -383,6 +383,14 @@ function setTab(tabName) {
   loadActivos();
 }
 
+let searchDebounceTimer = null;
+function debounceSearch() {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    applyFilters();
+  }, 280);
+}
+
 function applyFilters() {
   state.q = document.getElementById('search-input').value;
   state.ubicacion_id = document.getElementById('filter-ubicacion').value;

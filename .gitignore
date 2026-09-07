@@ -11,5 +11,4 @@ dist/
 .env
 .venv/
 env/
-.~lock.*
-*.lock
+GUIA_REUNION_SISTEMAS.md

@@ -170,3 +170,4 @@ Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9
   python scripts/seed_sample_data.py
   ```
   que crea una base de datos de prueba con registros ficticios.
+

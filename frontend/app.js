@@ -906,10 +906,6 @@ async function selectAllFilteredActivos() {
 }
 
 function openPrintQueueModal() {
-  if (state.printQueue.size === 0) {
-    showToast('La cola de impresión está vacía. Selecciona activos o usa el botón "+" en la tabla.', true);
-    return;
-  }
   buildQueuePrintItems();
   const panel = document.getElementById('print-queue-panel');
   if (panel) panel.classList.remove('hidden');
@@ -951,7 +947,13 @@ function renderQueueItemsList() {
   const list = document.getElementById('print-queue-items-list');
   if (!list) return;
   if (state.printQueue.size === 0) {
-    list.innerHTML = '<p class="text-slate-400 py-3 text-center text-xs">No hay elementos en la cola.</p>';
+    list.innerHTML = `
+      <div class="py-5 text-center text-slate-500">
+        <i class="fa-solid fa-tags text-2xl mb-1.5 text-slate-400"></i>
+        <p class="font-bold text-slate-700 text-xs">Tu cola de impresión está vacía</p>
+        <p class="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">Agrega activos usando el botón <strong class="text-blue-600"><i class="fa-solid fa-folder-plus"></i></strong> en cada fila de la tabla o marcando casillas y pulsando <em>"Agregar a Cola"</em>.</p>
+      </div>
+    `;
     return;
   }
 
@@ -1096,7 +1098,19 @@ function regeneratePrintLabels() {
   const container = document.getElementById('print-sheet-area');
   container.innerHTML = '';
 
+  if (state.currentPrintItems.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-1 sm:col-span-2 py-10 text-center text-slate-400 no-print">
+        <i class="fa-solid fa-file-circle-exclamation text-3xl text-slate-300 mb-2"></i>
+        <p class="font-medium text-slate-600 text-xs">No hay etiquetas para previsualizar</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Agrega activos a la cola o selecciónalos desde la tabla.</p>
+      </div>
+    `;
+    return;
+  }
+
   state.currentPrintItems.forEach((item, idx) => {
+    const card = document.createElement('div');
     const borderClass = state.borderStyle === 'dashed' ? 'border-dashed border-2 border-slate-400' :
                         state.borderStyle === 'none' ? 'border-none' :
                         'border-solid border border-emerald-800/80';

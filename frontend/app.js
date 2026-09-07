@@ -816,77 +816,95 @@ function regeneratePrintLabels() {
 
   state.currentPrintItems.forEach((item, idx) => {
     const card = document.createElement('div');
-    card.className = 'label-card bg-white border border-emerald-700/80 rounded-xl p-2.5 shadow-sm flex flex-col justify-between text-xs';
-    card.style.minHeight = '48mm';
+    card.className = 'label-card bg-white border border-emerald-800/80 rounded-lg p-2 shadow-sm flex flex-col justify-between text-xs';
+    card.style.height = '48mm';
+    card.style.maxHeight = '48mm';
 
     // Texto del código a codificar (código oficial si tiene, o código interno)
     const codeValue = item.codigo_oficial || item.codigo_interno;
 
-    // Encabezado compacto con Halcón
-    let html = `
-      <div class="flex items-center justify-between border-b border-emerald-800/30 pb-1 mb-1">
-        <div class="flex items-center gap-1.5">
-          <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón" class="h-6 w-auto object-contain">
-          <div>
-            <div class="text-[8px] font-black uppercase text-emerald-950 tracking-tight leading-none">COBACH PLANTEL 3</div>
-            <div class="text-[7px] font-bold text-emerald-700 uppercase tracking-wider leading-none mt-0.5">Control de Inventario</div>
+    // 1. CUERPO PRINCIPAL: LOGO AL LADO DEL CÓDIGO (MISMA ALTURA, OCUPANDO LA MAYOR PARTE)
+    let mainBodyHtml = '';
+
+    if (codeType === 'barcode') {
+      mainBodyHtml = `
+        <div class="flex items-center justify-between gap-2.5 h-[31mm] overflow-hidden px-1">
+          <!-- Logo Plantel 3 -->
+          <div class="flex flex-col items-center justify-center flex-shrink-0">
+            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[27mm] max-h-[27mm] w-auto object-contain">
+            <span class="text-[7.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
+          </div>
+          <!-- Código de Barras Amplio y Alto -->
+          <div class="flex-1 flex items-center justify-center min-w-0 h-full overflow-hidden">
+            <svg id="barcode-svg-${idx}" class="w-full max-h-[31mm]"></svg>
           </div>
         </div>
-        <div class="text-[8px] font-mono font-bold text-slate-500 uppercase">${item.origen}</div>
-      </div>
-    `;
-
-    // Cuerpo del código (Barras, QR o Ambos)
-    html += `<div class="flex items-center justify-center my-0.5 w-full">`;
-    if (codeType === 'barcode') {
-      html += `<svg id="barcode-svg-${idx}" class="w-full max-h-[32px]"></svg>`;
+      `;
     } else if (codeType === 'qr') {
-      html += `
-        <div class="flex items-center justify-center gap-3">
-          <div id="qr-div-${idx}"></div>
-          <div class="text-left">
-            <div class="font-mono font-black text-sm text-slate-900">${item.codigo_interno}</div>
-            ${item.codigo_oficial ? `<div class="text-[10px] font-bold text-emerald-700">OFICIAL: #${item.codigo_oficial}</div>` : '<div class="text-[9px] font-semibold text-amber-600">Etiqueta Provisional</div>'}
+      mainBodyHtml = `
+        <div class="flex items-center justify-between gap-3 h-[31mm] overflow-hidden px-1">
+          <!-- Logo Plantel 3 -->
+          <div class="flex flex-col items-center justify-center flex-shrink-0">
+            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[27mm] max-h-[27mm] w-auto object-contain">
+            <span class="text-[7.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
+          </div>
+          <!-- QR y Códigos en Grande -->
+          <div class="flex-1 flex items-center justify-center gap-3 min-w-0">
+            <div id="qr-div-${idx}" class="flex-shrink-0"></div>
+            <div class="flex flex-col justify-center min-w-0 text-left">
+              <div class="font-mono font-black text-base sm:text-lg text-slate-900 leading-tight tracking-tight">${item.codigo_interno}</div>
+              ${item.codigo_oficial ? `<div class="text-xs font-bold text-emerald-700 mt-1">OFICIAL: #${item.codigo_oficial}</div>` : '<div class="text-[8.5px] font-bold text-amber-600 mt-1">PROVISIONAL</div>'}
+              <div class="text-[8px] font-bold text-slate-500 uppercase mt-1">${item.origen}</div>
+            </div>
           </div>
         </div>
       `;
     } else { // both
-      html += `
-        <div class="flex items-center justify-between w-full gap-2">
-          <div class="flex-1 overflow-hidden">
-            <svg id="barcode-svg-${idx}" class="w-full max-h-[26px]"></svg>
+      mainBodyHtml = `
+        <div class="flex items-center justify-between gap-2 h-[31mm] overflow-hidden px-1">
+          <!-- Logo Plantel 3 -->
+          <div class="flex flex-col items-center justify-center flex-shrink-0">
+            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[25mm] max-h-[25mm] w-auto object-contain">
+            <span class="text-[7px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
           </div>
+          <!-- Código de Barras -->
+          <div class="flex-1 flex items-center justify-center min-w-0 overflow-hidden">
+            <svg id="barcode-svg-${idx}" class="w-full max-h-[28mm]"></svg>
+          </div>
+          <!-- Código QR -->
           <div id="qr-div-${idx}" class="flex-shrink-0"></div>
         </div>
       `;
     }
-    html += `</div>`;
 
-    // Pie de la etiqueta con descripción, serie y aula
-    html += `
-      <div class="border-t border-slate-200 pt-1 mt-1 text-[9px] leading-tight text-slate-700">
-        <div class="font-bold text-slate-900 truncate uppercase">${escapeHtml(item.descripcion)}</div>
-        <div class="flex items-center justify-between text-slate-500 text-[8px] mt-0.5">
-          <span class="font-mono">${item.numero_serie ? `SERIE: ${escapeHtml(item.numero_serie)}` : 'S/N'}</span>
-          <span class="font-semibold text-emerald-900">${item.ubicacion ? escapeHtml(item.ubicacion) : 'PLANTEL 3'}</span>
+    // 2. PIE DE ETIQUETA: INFORMACIÓN ADICIONAL A LO ANCHO Y ABAJO
+    const bottomInfoHtml = `
+      <div class="border-t border-slate-300 pt-1 mt-0.5 text-[9px] leading-tight text-slate-700">
+        <div class="font-black text-slate-950 text-[10px] leading-tight uppercase truncate tracking-tight">${escapeHtml(item.descripcion)}</div>
+        <div class="flex items-center justify-between text-slate-600 text-[8.5px] mt-0.5 font-medium leading-none">
+          <span class="font-mono"><strong class="text-slate-500">SERIE:</strong> ${item.numero_serie ? escapeHtml(item.numero_serie) : 'S/N'}</span>
+          <span class="font-bold text-emerald-900 uppercase truncate max-w-[45%]">${item.ubicacion ? escapeHtml(item.ubicacion) : 'PLANTEL 3'}</span>
+          <span class="font-bold text-slate-500">${item.origen}</span>
         </div>
       </div>
     `;
 
-    card.innerHTML = html;
+    card.innerHTML = mainBodyHtml + bottomInfoHtml;
     container.appendChild(card);
 
     // Renderizar código de barras si aplica
     if (codeType === 'barcode' || codeType === 'both') {
       try {
+        const barHeight = codeType === 'both' ? 26 : 35;
+        const barWidth = codeType === 'both' ? 1.3 : 1.6;
         JsBarcode(`#barcode-svg-${idx}`, codeValue, {
           format: "CODE128",
-          width: 1.4,
-          height: 28,
+          width: barWidth,
+          height: barHeight,
           displayValue: true,
-          fontSize: 10,
+          fontSize: 11,
           font: "monospace",
-          textMargin: 1,
+          textMargin: 2,
           margin: 0
         });
       } catch (e) {
@@ -897,7 +915,7 @@ function regeneratePrintLabels() {
     // Renderizar código QR si aplica
     if (codeType === 'qr' || codeType === 'both') {
       try {
-        const qrSize = codeType === 'both' ? 38 : 56;
+        const qrSize = codeType === 'both' ? 36 : 68;
         new QRCode(document.getElementById(`qr-div-${idx}`), {
           text: `COBACH-PL3:${item.codigo_interno}${item.codigo_oficial ? `:${item.codigo_oficial}` : ''}`,
           width: qrSize,

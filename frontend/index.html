@@ -49,18 +49,25 @@
         size: letter portrait;
         margin: 10mm 8mm;
       }
+      /* Ocultar elementos fuera de la impresión con display:none para evitar hojas vacías */
+      header,
+      main,
+      #bulk-actions-bar,
+      #modal-asset-form,
+      #modal-delete,
+      #modal-detail,
+      #modal-tag,
+      #toast,
+      .no-print {
+        display: none !important;
+      }
       body {
         background: white !important;
         margin: 0 !important;
         padding: 0 !important;
       }
-      body * {
-        visibility: hidden;
-      }
-      #modal-print, #modal-print > div, #print-sheet-area, #print-sheet-area * {
-        visibility: visible;
-      }
       #modal-print {
+        display: block !important;
         position: static !important;
         background: transparent !important;
         padding: 0 !important;
@@ -87,22 +94,23 @@
         grid-auto-rows: 48mm !important;
         gap: 4mm 6mm !important;
         width: 100% !important;
+        background: transparent !important;
+        padding: 0 !important;
       }
       .label-card {
         border: 1.5px solid #166534 !important;
         border-radius: 6px !important;
-        padding: 2.5mm 3.5mm !important;
+        padding: 2mm 2.5mm !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
         height: 48mm !important;
+        max-height: 48mm !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         box-sizing: border-box !important;
         background: white !important;
-      }
-      .no-print {
-        display: none !important;
+        overflow: hidden !important;
       }
     }
   </style>
@@ -593,7 +601,6 @@
           </div>
           <div>
             <h3 class="text-sm font-bold text-slate-800">Hoja de Etiquetas de Inventario</h3>
-            <p class="text-[11px] text-slate-500">Plantilla tamaño Carta optimizada (10 etiquetas por hoja · 2 x 5)</p>
           </div>
         </div>
 
@@ -624,8 +631,8 @@
       </div>
 
       <!-- Botones de Acción (no se imprimen) -->
-      <div class="flex items-center justify-between border-t border-slate-200 pt-4 mt-4 no-print">
-        <span class="text-[11px] text-slate-400">💡 Al imprimir, asegúrate de desmarcar "Encabezados y pies de página" en el diálogo del navegador.</span>
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-t border-slate-200 pt-4 mt-4 gap-3 no-print">
+        <span class="text-[11px] text-slate-500">💡 <strong>Tip para Firefox y Chrome:</strong> En la ventana de impresión, abre <em>Más ajustes</em> y desmarca <em>"Encabezados y pies de página"</em> para que no se imprima la URL ni la fecha en los márgenes.</span>
         <div class="flex items-center gap-2">
           <button type="button" onclick="closePrintModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
             Cerrar

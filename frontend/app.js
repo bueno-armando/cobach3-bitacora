@@ -1138,6 +1138,7 @@ function regeneratePrintLabels() {
     card.className = `label-card ${borderClass} bg-white rounded-none p-1.5 shadow-xs flex flex-col justify-between text-xs`;
     card.style.height = '48mm';
     card.style.maxHeight = '48mm';
+    card.style.borderRadius = '0px';
 
     // Determinar valor a codificar según el selector (oficial, interno o auto)
     let codeValue = item.codigo_interno;

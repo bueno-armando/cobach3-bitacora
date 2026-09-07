@@ -82,6 +82,14 @@
       object-fit: contain !important;
     }
 
+    /* Esquinas cuadradas estrictas para corte con tijeras o guillotina */
+    .label-card,
+    .label-card.border-solid,
+    .label-card.border-dashed,
+    .label-card.border-none {
+      border-radius: 0px !important;
+    }
+
     /* Estilos de Impresión de Hoja de Etiquetas (10 por hoja Carta: 2 columnas x 5 filas) */
     @media print {
       @page {
@@ -689,43 +697,45 @@
 
       <!-- Contenedor con Scroll del Modal -->
       <div class="p-4 sm:p-6 overflow-y-auto flex-1 space-y-3">
-        <!-- Toolbar de Controles de Configuración (no se imprime) -->
-        <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 no-print">
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="flex items-center gap-1.5">
-              <label for="print-code-type" class="text-xs font-semibold text-slate-600">Tipo de Código:</label>
-              <select id="print-code-type" onchange="regeneratePrintLabels()" class="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
-                <option value="barcode" selected>Código de barras</option>
-                <option value="qr">Código QR</option>
-                <option value="both">Ambos códigos</option>
-              </select>
-            </div>
+        <!-- Toolbar de Controles de Configuración en una sola línea (no se imprime) -->
+        <div class="bg-slate-50 border border-slate-200/90 rounded-xl px-3.5 py-2 flex items-center justify-between gap-2.5 text-xs no-print overflow-x-auto">
+          <!-- 1. Tipo de Código -->
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <label for="print-code-type" class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Código:</label>
+            <select id="print-code-type" onchange="regeneratePrintLabels()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
+              <option value="barcode" selected>Barras</option>
+              <option value="qr">QR</option>
+              <option value="both">Ambos</option>
+            </select>
+          </div>
 
-            <div class="flex items-center gap-1.5">
-              <label for="print-code-source" class="text-xs font-semibold text-slate-600">Dato:</label>
-              <select id="print-code-source" onchange="regeneratePrintLabels()" class="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
-                <option value="auto" selected>Auto (Oficial o Interno)</option>
-                <option value="interno">Solo Cód. Interno (PL3-...)</option>
-                <option value="oficial">Solo Cód. Oficial (Verde)</option>
-              </select>
-            </div>
+          <!-- 2. Dato a codificar (Cód. Interno preseleccionado) -->
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <label for="print-code-source" class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Dato:</label>
+            <select id="print-code-source" onchange="regeneratePrintLabels()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
+              <option value="interno" selected>Cód. Interno</option>
+              <option value="oficial">Cód. Oficial (Verde)</option>
+              <option value="auto">Auto</option>
+            </select>
+          </div>
 
-            <div class="flex items-center gap-1.5">
-              <label for="print-copies-input" class="text-xs font-semibold text-slate-600">Copias:</label>
-              <input type="number" id="print-copies-input" min="1" max="100" value="1" onchange="changePrintCopies(this.value)" class="w-14 bg-white border border-slate-300 rounded-xl px-2 py-1.5 text-xs font-bold text-slate-800 text-center focus:ring-2 focus:ring-emerald-500">
-              <button type="button" id="btn-fill-sheet" onclick="fillSheetWithSingle()" class="hidden px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition btn-pop">
-                <i class="fa-solid fa-table-cells mr-1"></i> Llenar hoja (10)
-              </button>
-            </div>
+          <!-- 3. Copias y Llenar hoja -->
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <label for="print-copies-input" class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Copias:</label>
+            <input type="number" id="print-copies-input" min="1" max="100" value="1" onchange="changePrintCopies(this.value)" class="w-12 bg-white border border-slate-300 rounded-lg px-1.5 py-1 text-xs font-bold text-slate-800 text-center focus:ring-2 focus:ring-emerald-500">
+            <button type="button" id="btn-fill-sheet" onclick="fillSheetWithSingle()" class="hidden px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-bold transition btn-pop whitespace-nowrap" title="Llenar los 10 espacios de la hoja Carta">
+              <i class="fa-solid fa-table-cells mr-1"></i> Llenar (10)
+            </button>
+          </div>
 
-            <div class="flex items-center gap-1.5">
-              <label for="print-border-style" class="text-xs font-semibold text-slate-600">Líneas de corte:</label>
-              <select id="print-border-style" onchange="changeBorderStyle(this.value)" class="bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
-                <option value="solid" selected>Línea continua</option>
-                <option value="dashed">Línea punteada</option>
-                <option value="none">Sin líneas</option>
-              </select>
-            </div>
+          <!-- 4. Líneas de corte -->
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <label for="print-border-style" class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Líneas:</label>
+            <select id="print-border-style" onchange="changeBorderStyle(this.value)" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
+              <option value="solid" selected>Continua</option>
+              <option value="dashed">Punteada</option>
+              <option value="none">Sin líneas</option>
+            </select>
           </div>
         </div>
 
@@ -892,6 +902,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js"></script>
+  <script src="/app.js?v=3"></script>
 </body>
 </html>

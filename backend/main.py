@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from fastapi import FastAPI, Depends, Query
+from fastapi import FastAPI, Depends, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -10,15 +10,17 @@ import backend.crud as crud
 from backend.schemas import (
     PaginatedActivosResponse,
     ActivoDetail,
+    ActivoCreate,
+    ActivoUpdate,
+    CambiarEstatusRequest,
     AsignarEtiquetaRequest,
-    CatalogosResponse,
-    DashboardStats
+    CatalogosResponse
 )
 
 app = FastAPI(
     title="Sistema de Inventario - COBACH Plantel 3",
-    description="API para consulta de activos, control de adquisiciones locales (GTO y C.A.) y conciliación de etiquetas verdes de Bienes Patrimoniales.",
-    version="1.0.0"
+    description="API para control, consulta y gestión del ciclo de vida de los activos del Plantel 3.",
+    version="1.1.0"
 )
 
 # Configuración de CORS
@@ -38,7 +40,8 @@ def list_activos(
     ubicacion_id: Optional[int] = Query(None, description="Filtrar por ID de ubicación"),
     categoria_id: Optional[int] = Query(None, description="Filtrar por ID de categoría"),
     resguardante_id: Optional[int] = Query(None, description="Filtrar por ID de resguardante"),
-    estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus: PENDIENTE_ETIQUETA, ETIQUETADO_OFICIAL"),
+    estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus etiqueta: PENDIENTE_ETIQUETA, ETIQUETADO_OFICIAL"),
+    estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo: OPERATIVO, EN_DESUSO, EN_REPARACION, BAJA"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db)
@@ -51,14 +54,35 @@ def list_activos(
         categoria_id=categoria_id,
         resguardante_id=resguardante_id,
         estatus_etiqueta=estatus_etiqueta,
+        estatus_activo=estatus_activo,
         page=page,
         limit=limit
     )
 
 
+@app.post("/api/activos", response_model=ActivoDetail, status_code=status.HTTP_201_CREATED, summary="Registrar nuevo activo")
+def create_activo(data: ActivoCreate, db: Session = Depends(get_db)):
+    return crud.create_activo(db=db, data=data)
+
+
 @app.get("/api/activos/{activo_id}", response_model=ActivoDetail, summary="Detalle completo de un activo")
 def get_activo_detail(activo_id: int, db: Session = Depends(get_db)):
     return crud.get_activo_by_id(db=db, activo_id=activo_id)
+
+
+@app.put("/api/activos/{activo_id}", response_model=ActivoDetail, summary="Modificar datos de un activo existente")
+def update_activo(activo_id: int, data: ActivoUpdate, db: Session = Depends(get_db)):
+    return crud.update_activo(db=db, activo_id=activo_id, data=data)
+
+
+@app.delete("/api/activos/{activo_id}", summary="Eliminar un activo")
+def delete_activo(activo_id: int, db: Session = Depends(get_db)):
+    return crud.delete_activo(db=db, activo_id=activo_id)
+
+
+@app.patch("/api/activos/{activo_id}/estatus-operativo", response_model=ActivoDetail, summary="Cambiar estado físico/operativo (Operativo, En Desuso, etc.)")
+def change_operational_status(activo_id: int, data: CambiarEstatusRequest, db: Session = Depends(get_db)):
+    return crud.cambiar_estatus_operativo(db=db, activo_id=activo_id, data=data)
 
 
 @app.post("/api/activos/{activo_id}/asignar-etiqueta", response_model=ActivoDetail, summary="Asignar código oficial de etiqueta verde")
@@ -71,7 +95,7 @@ def get_catalogos(db: Session = Depends(get_db)):
     return crud.get_catalogos(db=db)
 
 
-@app.get("/api/stats", response_model=DashboardStats, summary="Estadísticas generales del inventario")
+@app.get("/api/stats", summary="Estadísticas generales del inventario")
 def get_stats(db: Session = Depends(get_db)):
     return crud.get_dashboard_stats(db=db)
 

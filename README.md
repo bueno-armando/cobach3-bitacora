@@ -1,8 +1,8 @@
 # Sistema de Inventario y Control de Activos — COBACH Plantel 3
 
-Plataforma web de consulta, trazabilidad y control de inventario de bienes patrimoniales para el **Colegio de Bachilleres del Estado de Chihuahua (Plantel 3)**.
+Plataforma web integral de gestión, trazabilidad y control de inventario de bienes patrimoniales para el **Colegio de Bachilleres del Estado de Chihuahua (Plantel 3)**.
 
-Desarrollado para resolver la brecha operativa entre la catalogación externa de la Dirección General de Bienes Patrimoniales (Oficina Central) y las adquisiciones locales del plantel.
+Desarrollada para resolver la brecha operativa entre la catalogación externa de la Dirección General de Bienes Patrimoniales (Oficina Central) y las adquisiciones locales del plantel.
 
 ---
 
@@ -17,24 +17,26 @@ En la operación cotidiana del Plantel 3:
 ### La Solución Técnica
 * **Modelo Relacional Unificado:** Consolidación de los archivos Excel dispersos en una base de datos relacional (SQLite / PostgreSQL) con catálogos normalizados de ubicaciones, categorías y resguardantes.
 * **Ciclo de Vida de Doble Identificador:**
-  * `codigo_interno`: Identificador único y atómico asignado de inmediato al ingresar el activo al plantel (`PL3-GTO-XXXX`, `PL3-CA-XXXX`, `PL3-CEN-XXXXXX`).
+  * `codigo_interno`: Identificador único y atómico asignado de inmediato al ingresar el activo al plantel (`PL3-GTO-XXXX`, `PL3-CA-XXXX`, `PL3-CEN-XXXXXX`, `PL3-AUD-XXXXXX`).
   * `codigo_oficial`: Número de la etiqueta verde oficial, el cual permanece pendiente (`NULL`) hasta su colocación física.
 * **Módulo de Conciliación de Etiquetas:** Permite al encargado de informática buscar cualquier activo provisional y registrar en segundos el código oficial de la etiqueta verde tan pronto como la Oficina Central la instala, manteniendo historial de auditoría.
-* **Vistas Dedicadas y Búsqueda Inteligente:** Búsqueda en tiempo real por **UBICACIÓN**, **ACTIVO / CÓDIGO**, **NÚMERO DE SERIE** y filtros especializados para apartados de **GASTO** y **C.A.**.
+* **Control de Estado Físico / Operativo:** Registro y filtrado de bienes **Operativos**, **En Desuso (propuestos para baja/descarte)**, **En Reparación** o **Bajas Oficiales**.
+* **Impresión de Etiquetas con Código QR:** Módulo integrado para generar e imprimir etiquetas adhesivas con el logo oficial del Halcón del Plantel 3, código QR y datos del activo.
+* **Gestión CRUD Completa:** Registro, edición, baja lógica/física y consulta de cualquier bien en el sistema.
 
 ---
 
 ## 🛠️ Stack Tecnológico y Portabilidad
 
 * **Backend:** Python 3.10+ / **FastAPI** (asíncrono, validación estricta con Pydantic, documentación Swagger interactiva).
-* **ORM & Base de Datos:** **SQLAlchemy 2.0** con motor relacional **SQLite** (cero configuración, portabilidad total; compatible con PostgreSQL/MySQL mediante `.env`).
+* **ORM & Base de Datos:** **SQLAlchemy 2.0** con motor relacional **SQLite** (cero configuración, portabilidad total; compatible con PostgreSQL/MySQL mediante variable de entorno `DATABASE_URL`).
 * **ETL & Data Processing:** **Pandas**, **OpenPyXL**, **LXML**.
-* **Frontend:** HTML5, **Tailwind CSS**, FontAwesome, Vanilla JS modular (sin dependencias complejas ni builds pesados).
+* **Frontend:** HTML5, **Tailwind CSS**, FontAwesome, QRCode.js, Vanilla JS modular (sin dependencias complejas ni builds pesados).
 * **Multiplataforma:** Diseñado para desarrollarse en **Linux (Arch Linux)** y ejecutarse sin fricción en servidores o PCs con **Windows**.
 
 ---
 
-## 🗄️ Modelo de Datos
+## 🗄️ Modelo de Datos Relacional
 
 ```mermaid
 erDiagram
@@ -49,6 +51,7 @@ erDiagram
         string codigo_oficial UK "Etiqueta verde oficial (nullable)"
         string origen "GASTO, C.A., CENTRAL, AUDITORIO"
         string estatus_etiqueta "PENDIENTE_ETIQUETA, ETIQUETADO_OFICIAL"
+        string estatus_activo "OPERATIVO, EN_DESUSO, EN_REPARACION, BAJA"
         string descripcion
         string marca
         string modelo
@@ -105,11 +108,20 @@ Esto generará una base de datos `inventario.db` lista para interactuar con la p
 
 | Método | Endpoint | Descripción |
 | :--- | :--- | :--- |
-| `GET` | `/api/activos` | Consulta paginada con filtros por texto, origen (`GASTO`, `C.A.`), ubicación y categoría |
+| `GET` | `/api/activos` | Consulta paginada con filtros por texto, origen (`GASTO`, `C.A.`), ubicación, categoría y estado físico |
+| `POST` | `/api/activos` | Crear un nuevo activo en el inventario (autogenera código interno) |
 | `GET` | `/api/activos/{id}` | Ficha técnica y administrativa completa de un activo con historial |
+| `PUT` | `/api/activos/{id}` | Modificar datos del activo |
+| `DELETE` | `/api/activos/{id}` | Eliminar un activo del sistema |
+| `PATCH` | `/api/activos/{id}/estatus-operativo` | Actualizar estado físico (`OPERATIVO`, `EN_DESUSO`, `EN_REPARACION`) |
 | `POST` | `/api/activos/{id}/asignar-etiqueta` | Conciliación y asignación de etiqueta verde oficial con validación de unicidad |
 | `GET` | `/api/catalogos` | Listado de ubicaciones, categorías y resguardantes normalizados |
-| `GET` | `/api/stats` | Indicadores clave (total activos, oficiales vs. pendientes por origen) |
+| `GET` | `/api/stats` | Indicadores clave (total activos, oficiales vs. pendientes por origen y estado) |
+
+---
+
+## 📖 Documentación de Contexto Técnico
+Para detalles técnicos exhaustivos sobre reglas de negocio, modelos de datos y contexto para otros modelos de IA o colaboradores, consulta el archivo [**`CONTEXT.md`**](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/CONTEXT.md).
 
 ---
 

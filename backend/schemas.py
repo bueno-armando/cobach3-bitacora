@@ -99,6 +99,58 @@ class AsignarEtiquetaRequest(BaseModel):
     notas: Optional[str] = None
 
 
+class ActivoCreate(BaseModel):
+    codigo_interno: Optional[str] = None
+    codigo_oficial: Optional[str] = None
+    origen: str = "GASTO"  # 'GASTO', 'C.A.', 'CENTRAL', 'AUDITORIO'
+    estatus_operativo: str = "OPERATIVO"  # 'OPERATIVO', 'EN_DESUSO', 'EN_REPARACION', 'BAJA'
+    descripcion: str
+    especificacion: Optional[str] = None
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    numero_serie: Optional[str] = None
+    categoria_id: Optional[int] = None
+    categoria_nombre: Optional[str] = None
+    ubicacion_id: Optional[int] = None
+    ubicacion_nombre: Optional[str] = None
+    resguardante_id: Optional[int] = None
+    resguardante_nombre: Optional[str] = None
+    condicion: Optional[str] = "Buena"
+    costo: Optional[float] = None
+    numero_factura: Optional[str] = None
+    orden_compra: Optional[str] = None
+    observaciones: Optional[str] = None
+
+
+class ActivoUpdate(BaseModel):
+    codigo_interno: Optional[str] = None
+    codigo_oficial: Optional[str] = None
+    origen: Optional[str] = None
+    estatus_operativo: Optional[str] = None
+    estatus_etiqueta: Optional[str] = None
+    descripcion: Optional[str] = None
+    especificacion: Optional[str] = None
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    numero_serie: Optional[str] = None
+    categoria_id: Optional[int] = None
+    categoria_nombre: Optional[str] = None
+    ubicacion_id: Optional[int] = None
+    ubicacion_nombre: Optional[str] = None
+    resguardante_id: Optional[int] = None
+    resguardante_nombre: Optional[str] = None
+    condicion: Optional[str] = None
+    costo: Optional[float] = None
+    numero_factura: Optional[str] = None
+    orden_compra: Optional[str] = None
+    observaciones: Optional[str] = None
+
+
+class CambiarEstatusRequest(BaseModel):
+    estatus: str  # 'OPERATIVO', 'EN_DESUSO', 'EN_REPARACION', 'BAJA'
+    motivo: Optional[str] = None
+
+
 class CatalogosResponse(BaseModel):
     categorias: List[CategoriaOut]
     ubicaciones: List[UbicacionOut]

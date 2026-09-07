@@ -4,13 +4,16 @@ const state = {
   q: '',
   ubicacion_id: '',
   categoria_id: '',
+  estatus_activo: '',
   page: 1,
   limit: 50,
   totalPages: 1,
-  totalItems: 0
+  totalItems: 0,
+  deletingId: null,
+  rawCatalogos: { ubicaciones: [], categorias: [], resguardantes: [] }
 };
 
-// Inicialización al cargar la página
+// Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([
     loadStats(),
@@ -33,14 +36,17 @@ async function loadStats() {
   }
 }
 
-// Cargar listas desplegables de catálogos
+// Cargar catálogos y rellenar selects y datalists
 async function loadCatalogos() {
   try {
     const res = await fetch('/api/catalogos');
     if (!res.ok) return;
     const data = await res.json();
+    state.rawCatalogos = data;
 
+    // Selects de filtros
     const selectUbi = document.getElementById('filter-ubicacion');
+    selectUbi.innerHTML = '<option value="">Todas las ubicaciones</option>';
     data.ubicaciones.forEach(u => {
       const opt = document.createElement('option');
       opt.value = u.id;
@@ -49,48 +55,56 @@ async function loadCatalogos() {
     });
 
     const selectCat = document.getElementById('filter-categoria');
+    selectCat.innerHTML = '<option value="">Todas las categorías</option>';
     data.categorias.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c.id;
       opt.textContent = c.nombre;
       selectCat.appendChild(opt);
     });
+
+    // Datalists para autocompletado en formulario
+    populateDatalist('datalist-ubicaciones', data.ubicaciones);
+    populateDatalist('datalist-categorias', data.categorias);
+    populateDatalist('datalist-resguardantes', data.resguardantes);
   } catch (err) {
     console.error('Error cargando catálogos:', err);
   }
 }
 
-// Cargar y renderizar la lista de activos
+function populateDatalist(elementId, items) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.innerHTML = '';
+  items.forEach(it => {
+    const opt = document.createElement('option');
+    opt.value = it.nombre;
+    el.appendChild(opt);
+  });
+}
+
+// Cargar lista de activos
 async function loadActivos() {
   const tbody = document.getElementById('activos-table-body');
   tbody.innerHTML = `
     <tr>
-      <td colspan="7" class="py-12 text-center text-slate-400">
+      <td colspan="8" class="py-12 text-center text-slate-400">
         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-600"></i>
-        <p>Buscando activos en la base de datos...</p>
+        <p>Consultando base de datos de activos...</p>
       </td>
     </tr>
   `;
 
-  // Construir parámetros de consulta
   const params = new URLSearchParams({
     page: state.page,
     limit: state.limit
   });
 
-  if (state.q.trim()) {
-    params.append('q', state.q.trim());
-  }
+  if (state.q.trim()) params.append('q', state.q.trim());
+  if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
+  if (state.categoria_id) params.append('categoria_id', state.categoria_id);
+  if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
 
-  if (state.ubicacion_id) {
-    params.append('ubicacion_id', state.ubicacion_id);
-  }
-
-  if (state.categoria_id) {
-    params.append('categoria_id', state.categoria_id);
-  }
-
-  // Filtrado según la pestaña activa
   if (state.tab === 'GASTO') {
     params.append('origen', 'GASTO');
   } else if (state.tab === 'C.A.') {
@@ -114,9 +128,9 @@ async function loadActivos() {
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="py-8 text-center text-red-500 font-medium">
+        <td colspan="8" class="py-8 text-center text-red-500 font-medium">
           <i class="fa-solid fa-circle-exclamation text-xl mb-1"></i>
-          <p>Ocurrió un error al consultar el inventario.</p>
+          <p>Ocurrió un error al consultar los activos.</p>
         </td>
       </tr>
     `;
@@ -131,7 +145,7 @@ function renderTable(items) {
   if (!items || items.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7" class="py-12 text-center text-slate-400">
+        <td colspan="8" class="py-12 text-center text-slate-400">
           <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-300"></i>
           <p class="font-medium text-slate-600">No se encontraron activos con los filtros seleccionados.</p>
           <p class="text-xs text-slate-400 mt-1">Intenta con otro término de búsqueda o limpia los filtros.</p>
@@ -145,13 +159,13 @@ function renderTable(items) {
     // Badge de origen
     let origenBadge = '';
     if (item.origen === 'GASTO') {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold badge-gasto">GASTO</span>';
+      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-gasto">GASTO</span>';
     } else if (item.origen === 'C.A.') {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold badge-ca">C.A.</span>';
+      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-ca">C.A.</span>';
     } else if (item.origen === 'CENTRAL') {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold badge-central">CENTRAL</span>';
+      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-central">CENTRAL</span>';
     } else {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[11px] font-bold badge-auditorio">AUDITORIO</span>';
+      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-auditorio">AUDITORIO</span>';
     }
 
     // Badge de etiqueta oficial verde
@@ -172,7 +186,7 @@ function renderTable(items) {
       btnAsignarTag = `
         <button 
           onclick="openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')"
-          title="Registrar Etiqueta Verde" 
+          title="Registrar Etiqueta Verde Oficial" 
           class="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition"
         >
           <i class="fa-solid fa-tag"></i>
@@ -180,37 +194,71 @@ function renderTable(items) {
       `;
     }
 
+    // Badge de estado operativo / físico
+    let estatusFisicoBadge = '';
+    if (item.estatus_activo === 'OPERATIVO') {
+      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Operativo</span>';
+    } else if (item.estatus_activo === 'EN_DESUSO') {
+      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> En Desuso</span>';
+    } else if (item.estatus_activo === 'EN_REPARACION') {
+      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Reparación</span>';
+    } else {
+      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">Baja Oficial</span>';
+    }
+
     return `
-      <tr class="hover:bg-slate-50/80 transition">
-        <td class="py-3 px-4 font-mono font-bold text-slate-700 text-xs">${item.codigo_interno}</td>
+      <tr class="hover:bg-slate-50 transition">
+        <td class="py-3 px-4 font-mono font-bold text-slate-800 text-xs">${item.codigo_interno}</td>
         <td class="py-3 px-4">${tagBadge}</td>
         <td class="py-3 px-4">
-          <div class="font-semibold text-slate-800">${escapeHtml(item.descripcion)}</div>
-          <div class="text-xs text-slate-500">
+          <div class="font-bold text-slate-800">${escapeHtml(item.descripcion)}</div>
+          <div class="text-[11px] text-slate-500">
             ${item.marca ? `<span class="font-medium text-slate-600">${escapeHtml(item.marca)}</span>` : ''}
             ${item.modelo ? `<span class="text-slate-400">· ${escapeHtml(item.modelo)}</span>` : ''}
           </div>
         </td>
         <td class="py-3 px-4 text-xs font-mono text-slate-600">
-          ${item.numero_serie ? escapeHtml(item.numero_serie) : '<span class="text-slate-400 italic">S/N</span>'}
+          ${item.numero_serie ? escapeHtml(item.numero_serie) : '<span class="text-slate-300 italic">S/N</span>'}
         </td>
         <td class="py-3 px-4 text-xs text-slate-600">
           <div class="flex items-center gap-1.5">
             <i class="fa-solid fa-location-dot text-slate-400 text-[10px]"></i>
-            <span class="font-medium">${item.ubicacion ? escapeHtml(item.ubicacion) : 'No especificada'}</span>
+            <span class="font-medium">${item.ubicacion ? escapeHtml(item.ubicacion) : 'No asignada'}</span>
           </div>
         </td>
+        <td class="py-3 px-4">${estatusFisicoBadge}</td>
         <td class="py-3 px-4">${origenBadge}</td>
         <td class="py-3 px-4 text-center">
           <div class="flex items-center justify-center space-x-1">
             <button 
               onclick="openDetailModal(${item.id})"
               title="Ver detalle completo"
-              class="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition"
+              class="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
             >
               <i class="fa-solid fa-circle-info"></i>
             </button>
+            <button 
+              onclick="openEditModal(${item.id})"
+              title="Editar datos del activo"
+              class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+            >
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button 
+              onclick="openPrintModal(${item.id}, '${item.codigo_interno}', '${item.codigo_oficial || ''}', '${escapeHtml(item.descripcion)}', '${escapeHtml(item.numero_serie || '')}', '${escapeHtml(item.ubicacion || '')}')"
+              title="Imprimir Etiqueta"
+              class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition"
+            >
+              <i class="fa-solid fa-print"></i>
+            </button>
             ${btnAsignarTag}
+            <button 
+              onclick="openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')"
+              title="Eliminar activo"
+              class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+            >
+              <i class="fa-solid fa-trash"></i>
+            </button>
           </div>
         </td>
       </tr>
@@ -218,7 +266,7 @@ function renderTable(items) {
   }).join('');
 }
 
-// Actualizar controles de paginación y texto resumen
+// UI Paginación
 function updatePaginationUI() {
   document.getElementById('current-page').textContent = state.page;
   document.getElementById('total-pages').textContent = state.totalPages;
@@ -237,14 +285,13 @@ function updatePaginationUI() {
   }
 }
 
-// Cambio de pestañas principales (GASTO, C.A., etc.)
+// Pestañas
 function setTab(tabName) {
   state.tab = tabName;
   state.page = 1;
 
-  // Actualizar estilos visuales de los botones de pestañas
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('bg-white', 'text-emerald-900', 'shadow');
+    btn.classList.remove('bg-white', 'text-emerald-950', 'shadow');
     btn.classList.add('text-emerald-100', 'hover:bg-emerald-800/60');
   });
 
@@ -256,26 +303,22 @@ function setTab(tabName) {
   const activeBtn = document.getElementById(activeId);
   if (activeBtn) {
     activeBtn.classList.remove('text-emerald-100', 'hover:bg-emerald-800/60');
-    activeBtn.classList.add('bg-white', 'text-emerald-900', 'shadow');
+    activeBtn.classList.add('bg-white', 'text-emerald-950', 'shadow');
   }
 
   loadActivos();
 }
 
-// Aplicar filtros de la barra superior
 function applyFilters() {
-  const searchInput = document.getElementById('search-input');
-  state.q = searchInput.value;
+  state.q = document.getElementById('search-input').value;
   state.ubicacion_id = document.getElementById('filter-ubicacion').value;
   state.categoria_id = document.getElementById('filter-categoria').value;
+  state.estatus_activo = document.getElementById('filter-estatus-operativo').value;
   state.page = 1;
 
   const clearBtn = document.getElementById('clear-search-btn');
-  if (state.q.trim()) {
-    clearBtn.classList.remove('hidden');
-  } else {
-    clearBtn.classList.add('hidden');
-  }
+  if (state.q.trim()) clearBtn.classList.remove('hidden');
+  else clearBtn.classList.add('hidden');
 
   loadActivos();
 }
@@ -290,10 +333,12 @@ function resetAllFilters() {
   document.getElementById('search-input').value = '';
   document.getElementById('filter-ubicacion').value = '';
   document.getElementById('filter-categoria').value = '';
+  document.getElementById('filter-estatus-operativo').value = '';
   document.getElementById('clear-search-btn').classList.add('hidden');
   state.q = '';
   state.ubicacion_id = '';
   state.categoria_id = '';
+  state.estatus_activo = '';
   state.page = 1;
   loadActivos();
 }
@@ -318,12 +363,162 @@ function nextPage() {
   }
 }
 
-// Modal de Detalle
+// -------------------------------------------------------------
+// MODAL CRUD: REGISTRAR / EDITAR ACTIVO
+// -------------------------------------------------------------
+function openCreateModal() {
+  document.getElementById('asset-form-id').value = '';
+  document.getElementById('asset-form-title').textContent = 'Registrar Nuevo Activo';
+  document.getElementById('asset-form-icon').className = 'fa-solid fa-plus-circle text-amber-400 text-lg';
+  document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Registrar Activo';
+  
+  // Limpiar campos
+  document.getElementById('form-origen').value = state.tab === 'C.A.' ? 'C.A.' : 'GASTO';
+  document.getElementById('form-estatus-operativo').value = 'OPERATIVO';
+  document.getElementById('form-codigo-interno').value = '';
+  document.getElementById('form-codigo-oficial').value = '';
+  document.getElementById('form-descripcion').value = '';
+  document.getElementById('form-marca').value = '';
+  document.getElementById('form-modelo').value = '';
+  document.getElementById('form-numero-serie').value = '';
+  document.getElementById('form-ubicacion').value = '';
+  document.getElementById('form-categoria').value = '';
+  document.getElementById('form-resguardante').value = '';
+  document.getElementById('form-especificacion').value = '';
+  document.getElementById('form-observaciones').value = '';
+  document.getElementById('asset-form-error').classList.add('hidden');
+
+  document.getElementById('modal-asset-form').classList.remove('hidden');
+}
+
+async function openEditModal(id) {
+  try {
+    const res = await fetch(`/api/activos/${id}`);
+    if (!res.ok) throw new Error('No se pudo cargar el activo');
+    const a = await res.json();
+
+    document.getElementById('asset-form-id').value = a.id;
+    document.getElementById('asset-form-title').textContent = `Editar Activo: ${a.codigo_interno}`;
+    document.getElementById('asset-form-icon').className = 'fa-solid fa-pen-to-square text-amber-400 text-lg';
+    document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios';
+
+    document.getElementById('form-origen').value = a.origen;
+    document.getElementById('form-estatus-operativo').value = a.estatus_activo;
+    document.getElementById('form-codigo-interno').value = a.codigo_interno;
+    document.getElementById('form-codigo-oficial').value = a.codigo_oficial || '';
+    document.getElementById('form-descripcion').value = a.descripcion;
+    document.getElementById('form-marca').value = a.marca || '';
+    document.getElementById('form-modelo').value = a.modelo || '';
+    document.getElementById('form-numero-serie').value = a.numero_serie || '';
+    document.getElementById('form-ubicacion').value = a.ubicacion || '';
+    document.getElementById('form-categoria').value = a.categoria || '';
+    document.getElementById('form-resguardante').value = a.resguardante || '';
+    document.getElementById('form-especificacion').value = a.especificacion || '';
+    document.getElementById('form-observaciones').value = a.observaciones || '';
+    document.getElementById('asset-form-error').classList.add('hidden');
+
+    document.getElementById('modal-asset-form').classList.remove('hidden');
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function closeAssetFormModal() {
+  document.getElementById('modal-asset-form').classList.add('hidden');
+}
+
+async function submitAssetForm(e) {
+  e.preventDefault();
+  const id = document.getElementById('asset-form-id').value;
+  const isEdit = Boolean(id);
+
+  const payload = {
+    origen: document.getElementById('form-origen').value,
+    estatus_operativo: document.getElementById('form-estatus-operativo').value,
+    codigo_interno: document.getElementById('form-codigo-interno').value.trim() || null,
+    codigo_oficial: document.getElementById('form-codigo-oficial').value.trim() || null,
+    descripcion: document.getElementById('form-descripcion').value.trim(),
+    marca: document.getElementById('form-marca').value.trim() || null,
+    modelo: document.getElementById('form-modelo').value.trim() || null,
+    numero_serie: document.getElementById('form-numero-serie').value.trim() || null,
+    ubicacion_nombre: document.getElementById('form-ubicacion').value.trim() || null,
+    categoria_nombre: document.getElementById('form-categoria').value.trim() || null,
+    resguardante_nombre: document.getElementById('form-resguardante').value.trim() || null,
+    especificacion: document.getElementById('form-especificacion').value.trim() || null,
+    observaciones: document.getElementById('form-observaciones').value.trim() || null
+  };
+
+  const errorDiv = document.getElementById('asset-form-error');
+  const btnSave = document.getElementById('btn-save-asset');
+  errorDiv.classList.add('hidden');
+  btnSave.disabled = true;
+
+  try {
+    const url = isEdit ? `/api/activos/${id}` : '/api/activos';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error al guardar el activo');
+
+    closeAssetFormModal();
+    showToast(isEdit ? '¡Activo actualizado con éxito!' : '¡Activo registrado con éxito!');
+    await Promise.all([loadStats(), loadCatalogos(), loadActivos()]);
+  } catch (err) {
+    errorDiv.textContent = err.message;
+    errorDiv.classList.remove('hidden');
+  } finally {
+    btnSave.disabled = false;
+  }
+}
+
+// -------------------------------------------------------------
+// MODAL: ELIMINAR ACTIVO
+// -------------------------------------------------------------
+function openDeleteModal(id, desc) {
+  state.deletingId = id;
+  document.getElementById('modal-delete-desc').textContent = `¿Estás seguro de eliminar "${desc}"? Esta acción no se puede deshacer.`;
+  document.getElementById('modal-delete').classList.remove('hidden');
+}
+
+function closeDeleteModal() {
+  state.deletingId = null;
+  document.getElementById('modal-delete').classList.add('hidden');
+}
+
+async function confirmDelete() {
+  if (!state.deletingId) return;
+  const btn = document.getElementById('btn-confirm-delete');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/activos/${state.deletingId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Error al eliminar');
+    closeDeleteModal();
+    showToast('Activo eliminado correctamente');
+    await Promise.all([loadStats(), loadActivos()]);
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// -------------------------------------------------------------
+// MODAL: DETALLE COMPLETO
+// -------------------------------------------------------------
 async function openDetailModal(id) {
   const modal = document.getElementById('modal-detail');
   const content = document.getElementById('modal-detail-content');
   const title = document.getElementById('modal-detail-title');
   const badge = document.getElementById('modal-detail-badge');
+  const opBadge = document.getElementById('modal-detail-operativo-badge');
+  const actionsContainer = document.getElementById('modal-detail-actions');
 
   content.innerHTML = `
     <div class="py-10 text-center text-slate-400">
@@ -340,11 +535,27 @@ async function openDetailModal(id) {
 
     title.textContent = a.descripcion;
     badge.textContent = `${a.origen} · ${a.codigo_interno}`;
-    badge.className = `text-xs font-bold px-2 py-0.5 rounded-md ${
+    badge.className = `text-[11px] font-bold px-2 py-0.5 rounded-md ${
       a.origen === 'GASTO' ? 'badge-gasto' :
       a.origen === 'C.A.' ? 'badge-ca' :
       a.origen === 'CENTRAL' ? 'badge-central' : 'badge-auditorio'
     }`;
+
+    opBadge.textContent = a.estatus_activo;
+    opBadge.className = `text-[11px] font-bold px-2 py-0.5 rounded-md ${
+      a.estatus_activo === 'OPERATIVO' ? 'bg-emerald-100 text-emerald-800' :
+      a.estatus_activo === 'EN_DESUSO' ? 'bg-red-100 text-red-800' :
+      a.estatus_activo === 'EN_REPARACION' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
+    }`;
+
+    actionsContainer.innerHTML = `
+      <button onclick="closeDetailModal(); openEditModal(${a.id})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
+        <i class="fa-solid fa-pen-to-square"></i> Editar
+      </button>
+      <button onclick="openPrintModal(${a.id}, '${a.codigo_interno}', '${a.codigo_oficial || ''}', '${escapeHtml(a.descripcion)}', '${escapeHtml(a.numero_serie || '')}', '${escapeHtml(a.ubicacion || '')}')" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
+        <i class="fa-solid fa-print"></i> Imprimir Etiqueta
+      </button>
+    `;
 
     let historialHtml = '';
     if (a.historial_etiquetas && a.historial_etiquetas.length > 0) {
@@ -358,7 +569,7 @@ async function openDetailModal(id) {
                   <span>Etiqueta Verde Asignada: #${h.codigo_oficial_asignado}</span>
                   <span class="text-emerald-700 font-normal">${new Date(h.fecha_asignacion).toLocaleDateString()}</span>
                 </div>
-                <div class="text-emerald-700 text-[11px] mt-0.5">Por: ${escapeHtml(h.asignado_por || 'Personal del Plantel')}</div>
+                <div class="text-emerald-700 text-[11px] mt-0.5">Por: ${escapeHtml(h.asignado_por || 'Personal')}</div>
                 ${h.notas ? `<p class="mt-1 text-[11px] italic text-emerald-800">"${escapeHtml(h.notas)}"</p>` : ''}
               </div>
             `).join('')}
@@ -421,17 +632,10 @@ async function openDetailModal(id) {
         </div>
       </div>
 
-      ${a.origen === 'CENTRAL' ? `
-        <div class="border-t border-slate-100 pt-3">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Datos de Oficina Central</h4>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 bg-slate-50 p-2.5 rounded-lg">
-            <div><span class="text-slate-400 block">Familia:</span> ${a.familia || '-'}</div>
-            <div><span class="text-slate-400 block">Factura:</span> ${a.numero_factura || '-'}</div>
-            <div><span class="text-slate-400 block">Orden Compra:</span> ${a.orden_compra || '-'}</div>
-            <div><span class="text-slate-400 block">Fecha Recepción:</span> ${a.fecha_recepcion || '-'}</div>
-            <div><span class="text-slate-400 block">Costo:</span> ${a.costo ? `$${a.costo.toLocaleString()}` : '-'}</div>
-            <div><span class="text-slate-400 block">Documento:</span> ${a.donacion_tipo || '-'}</div>
-          </div>
+      ${a.observaciones ? `
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Observaciones</h4>
+          <p class="text-slate-700 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-line">${escapeHtml(a.observaciones)}</p>
         </div>
       ` : ''}
 
@@ -446,7 +650,9 @@ function closeDetailModal() {
   document.getElementById('modal-detail').classList.add('hidden');
 }
 
-// Modal de Asignación de Etiqueta Verde
+// -------------------------------------------------------------
+// MODAL: ASIGNAR ETIQUETA VERDE
+// -------------------------------------------------------------
 function openTagModal(id, codigoInterno, descripcion) {
   document.getElementById('tag-activo-id').value = id;
   document.getElementById('modal-tag-desc').textContent = descripcion;
@@ -462,7 +668,6 @@ function closeTagModal() {
   document.getElementById('modal-tag').classList.add('hidden');
 }
 
-// Guardar nueva etiqueta verde
 async function submitTag(e) {
   e.preventDefault();
   const activoId = document.getElementById('tag-activo-id').value;
@@ -488,9 +693,7 @@ async function submitTag(e) {
     });
 
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.detail || 'No fue posible asignar la etiqueta');
-    }
+    if (!res.ok) throw new Error(data.detail || 'No fue posible asignar la etiqueta');
 
     closeTagModal();
     showToast(`¡Etiqueta #${codigoOficial} asignada con éxito!`);
@@ -504,7 +707,44 @@ async function submitTag(e) {
   }
 }
 
-// Toast de notificación
+// -------------------------------------------------------------
+// MODAL: IMPRIMIR ETIQUETA LOCAL CON QR Y LOGO HALCÓN
+// -------------------------------------------------------------
+function openPrintModal(id, codInt, codOficial, desc, serie, ubi) {
+  document.getElementById('ticket-codigo').textContent = codInt;
+  
+  const tagOficialEl = document.getElementById('ticket-tag-oficial');
+  if (codOficial && codOficial.trim()) {
+    tagOficialEl.textContent = `ETIQUETA VERDE OFICIAL: #${codOficial}`;
+    tagOficialEl.classList.remove('hidden');
+  } else {
+    tagOficialEl.classList.add('hidden');
+  }
+
+  document.getElementById('ticket-desc').textContent = desc || 'ACTIVO COBACH';
+  document.getElementById('ticket-serie').textContent = serie ? `SERIE: ${serie}` : 'SIN NÚMERO DE SERIE';
+  document.getElementById('ticket-ubi').textContent = `UBICACIÓN: ${ubi || 'PLANTEL 3'}`;
+
+  // Generar Código QR
+  const qrContainer = document.getElementById('ticket-qr');
+  qrContainer.innerHTML = '';
+  new QRCode(qrContainer, {
+    text: `COBACH-PL3:${codInt}${codOficial ? `:${codOficial}` : ''}`,
+    width: 100,
+    height: 100,
+    colorDark: '#064e3b',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  document.getElementById('modal-print').classList.remove('hidden');
+}
+
+function closePrintModal() {
+  document.getElementById('modal-print').classList.add('hidden');
+}
+
+// Toast
 function showToast(msg, isError = false) {
   const toast = document.getElementById('toast');
   const icon = document.getElementById('toast-icon');
@@ -523,7 +763,6 @@ function showToast(msg, isError = false) {
   }, 3500);
 }
 
-// Función auxiliar de escape HTML para prevenir XSS
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)

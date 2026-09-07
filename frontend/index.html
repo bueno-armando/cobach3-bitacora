@@ -57,17 +57,29 @@
       body * {
         visibility: hidden;
       }
-      #print-sheet-modal, #print-sheet-area, #print-sheet-area * {
+      #modal-print, #modal-print > div, #print-sheet-area, #print-sheet-area * {
         visibility: visible;
       }
-      #print-sheet-modal {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
+      #modal-print {
+        position: static !important;
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
+        width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        inset: auto !important;
+      }
+      #modal-print > div {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
       }
       #print-sheet-area {
         display: grid !important;

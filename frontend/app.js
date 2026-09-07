@@ -12,11 +12,16 @@ const state = {
   deletingId: null,
   rawCatalogos: { ubicaciones: [], categorias: [], resguardantes: [] },
   selectedIds: new Set(),
-  currentPrintItems: [] // Lista de activos para la hoja de etiquetas
+  printQueue: new Map(), // ID -> { activo, copies }
+  borderStyle: 'solid',  // 'solid', 'dashed', 'none'
+  basePrintItems: [],
+  printCopies: 1,
+  currentPrintItems: []  // Lista de activos expandida para la hoja de etiquetas
 };
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
+  loadQueueFromStorage();
   await Promise.all([
     loadStats(),
     loadCatalogos()
@@ -247,6 +252,13 @@ function renderTable(items) {
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <button 
+              onclick="addSingleToQueue(${item.id})"
+              title="Agregar a Cola de Impresión"
+              class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+            >
+              <i class="fa-solid fa-folder-plus"></i>
+            </button>
+            <button 
               onclick="openPrintSingle(${item.id})"
               title="Imprimir Etiqueta"
               class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition"
@@ -306,11 +318,19 @@ function updateSelectedCountUI() {
   const count = state.selectedIds.size;
   const bar = document.getElementById('bulk-actions-bar');
   const countBadge = document.getElementById('selected-count-badge');
+  const btnSelectAllFiltered = document.getElementById('btn-select-all-filtered');
+  const selectAllText = document.getElementById('select-all-filtered-text');
 
   if (countBadge) countBadge.textContent = count;
 
   if (count > 0) {
     bar.classList.remove('hidden');
+    if (state.totalItems > count && btnSelectAllFiltered) {
+      btnSelectAllFiltered.classList.remove('hidden');
+      if (selectAllText) selectAllText.textContent = `Seleccionar los ${state.totalItems} del filtro`;
+    } else if (btnSelectAllFiltered) {
+      btnSelectAllFiltered.classList.add('hidden');
+    }
   } else {
     bar.classList.add('hidden');
   }
@@ -605,6 +625,9 @@ async function openDetailModal(id) {
     }`;
 
     actionsContainer.innerHTML = `
+      <button onclick="addSingleToQueue(${a.id})" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
+        <i class="fa-solid fa-folder-plus"></i> + Cola
+      </button>
       <button onclick="closeDetailModal(); openEditModal(${a.id})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
         <i class="fa-solid fa-pen-to-square"></i> Editar
       </button>
@@ -764,6 +787,231 @@ async function submitTag(e) {
 }
 
 // -------------------------------------------------------------
+// GESTIÓN DE COLA DE IMPRESIÓN (CARRITO / LOTES)
+// -------------------------------------------------------------
+function loadQueueFromStorage() {
+  try {
+    const raw = localStorage.getItem('cobach3_print_queue');
+    if (raw) {
+      const arr = JSON.parse(raw);
+      state.printQueue = new Map(arr);
+    }
+  } catch (e) {
+    state.printQueue = new Map();
+  }
+  updateQueueBadgeUI();
+}
+
+function saveQueueToStorage() {
+  try {
+    const arr = Array.from(state.printQueue.entries());
+    localStorage.setItem('cobach3_print_queue', JSON.stringify(arr));
+  } catch (e) {
+    console.error('Error guardando cola:', e);
+  }
+  updateQueueBadgeUI();
+}
+
+function updateQueueBadgeUI() {
+  let totalLabels = 0;
+  state.printQueue.forEach(item => {
+    totalLabels += (item.copies || 1);
+  });
+  const badge = document.getElementById('queue-badge');
+  if (badge) {
+    badge.textContent = totalLabels;
+    if (totalLabels > 0) {
+      badge.className = 'bg-amber-400 text-slate-950 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none';
+    } else {
+      badge.className = 'bg-emerald-600 text-emerald-100 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none';
+    }
+  }
+}
+
+async function addSingleToQueue(id) {
+  try {
+    let activo = (state.currentPrintItems || []).find(a => a.id === id);
+    if (!activo) {
+      const res = await fetch(`/api/activos/${id}`);
+      if (!res.ok) throw new Error('No se pudo obtener el activo');
+      activo = await res.json();
+    }
+    const existing = state.printQueue.get(id);
+    if (existing) {
+      existing.copies = (existing.copies || 1) + 1;
+    } else {
+      state.printQueue.set(id, { ...activo, copies: 1 });
+    }
+    saveQueueToStorage();
+    showToast(`"${activo.codigo_interno}" agregado a la cola (${state.printQueue.get(id).copies} copias)`);
+  } catch (err) {
+    showToast('Error al agregar a la cola', true);
+  }
+}
+
+async function addSelectedToQueue() {
+  if (state.selectedIds.size === 0) return;
+  const count = state.selectedIds.size;
+  showToast(`Agregando ${count} activos a la cola...`);
+
+  try {
+    const ids = Array.from(state.selectedIds);
+    const promises = ids.map(id => {
+      const existing = state.printQueue.get(id);
+      if (existing) {
+        existing.copies = (existing.copies || 1) + 1;
+        return Promise.resolve(existing);
+      }
+      return fetch(`/api/activos/${id}`).then(r => r.json()).then(activo => {
+        state.printQueue.set(id, { ...activo, copies: 1 });
+      });
+    });
+    await Promise.all(promises);
+    saveQueueToStorage();
+    clearSelection();
+    showToast(`¡${count} activo(s) añadidos a la cola de impresión!`);
+  } catch (err) {
+    showToast('Error al procesar la cola', true);
+  }
+}
+
+async function selectAllFilteredActivos() {
+  try {
+    showToast('Cargando todos los activos del filtro actual...');
+    const params = new URLSearchParams();
+    if (state.tab) params.append('origen', state.tab === 'PENDIENTES' ? '' : state.tab);
+    if (state.tab === 'PENDIENTES') params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
+    if (state.q) params.append('q', state.q);
+    if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
+    if (state.categoria_id) params.append('categoria_id', state.categoria_id);
+    if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
+    params.append('page', '1');
+    params.append('limit', '2500');
+
+    const res = await fetch(`/api/activos?${params.toString()}`);
+    if (!res.ok) throw new Error('Error al cargar activos');
+    const data = await res.json();
+    data.items.forEach(item => state.selectedIds.add(item.id));
+
+    // Marcar checkboxes visibles
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = true);
+    const master = document.getElementById('select-all');
+    if (master) master.checked = true;
+
+    updateSelectedCountUI();
+    showToast(`¡${state.selectedIds.size} activos seleccionados!`);
+  } catch (err) {
+    showToast('Error al seleccionar todo el filtro', true);
+  }
+}
+
+function openPrintQueueModal() {
+  if (state.printQueue.size === 0) {
+    showToast('La cola de impresión está vacía. Selecciona activos o usa el botón "+" en la tabla.', true);
+    return;
+  }
+  buildQueuePrintItems();
+  const panel = document.getElementById('print-queue-panel');
+  if (panel) panel.classList.remove('hidden');
+  const txt = document.getElementById('toggle-queue-panel-text');
+  if (txt) txt.textContent = 'Ocultar Lista';
+  renderQueueItemsList();
+  showPrintModal();
+}
+
+function buildQueuePrintItems() {
+  const items = [];
+  state.printQueue.forEach(entry => {
+    const c = entry.copies || 1;
+    for (let i = 0; i < c; i++) {
+      items.push(entry);
+    }
+  });
+  state.basePrintItems = Array.from(state.printQueue.values());
+  state.currentPrintItems = items;
+  document.getElementById('print-sheet-count').textContent = items.length;
+  const pages = Math.ceil(items.length / 10) || 1;
+  document.getElementById('print-pages-count').textContent = pages;
+}
+
+function toggleQueuePanel() {
+  const panel = document.getElementById('print-queue-panel');
+  const txt = document.getElementById('toggle-queue-panel-text');
+  if (panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    txt.textContent = 'Ocultar Lista';
+    renderQueueItemsList();
+  } else {
+    panel.classList.add('hidden');
+    txt.textContent = 'Ver / Editar Lista';
+  }
+}
+
+function renderQueueItemsList() {
+  const list = document.getElementById('print-queue-items-list');
+  if (!list) return;
+  if (state.printQueue.size === 0) {
+    list.innerHTML = '<p class="text-slate-400 py-3 text-center text-xs">No hay elementos en la cola.</p>';
+    return;
+  }
+
+  list.innerHTML = Array.from(state.printQueue.values()).map(item => `
+    <div class="py-2 flex items-center justify-between gap-3">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <span class="font-mono font-bold text-slate-800">${item.codigo_interno}</span>
+          ${item.codigo_oficial ? `<span class="text-[10px] text-emerald-700 font-bold">#${item.codigo_oficial}</span>` : ''}
+          <span class="text-[9px] bg-slate-200 text-slate-700 px-1 rounded font-bold">${item.origen}</span>
+        </div>
+        <div class="text-slate-600 truncate text-[11px] mt-0.5">${escapeHtml(item.descripcion)}</div>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button onclick="updateQueueItemCopies(${item.id}, -1)" class="w-6 h-6 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center text-xs">-</button>
+        <span class="font-mono font-bold w-6 text-center text-xs">${item.copies || 1}</span>
+        <button onclick="updateQueueItemCopies(${item.id}, 1)" class="w-6 h-6 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center text-xs">+</button>
+        <button onclick="removeQueueItem(${item.id})" class="ml-2 text-red-500 hover:text-red-700 p-1" title="Quitar de la cola">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateQueueItemCopies(id, delta) {
+  const item = state.printQueue.get(id);
+  if (!item) return;
+  item.copies = Math.max(1, (item.copies || 1) + delta);
+  saveQueueToStorage();
+  buildQueuePrintItems();
+  renderQueueItemsList();
+  regeneratePrintLabels();
+}
+
+function removeQueueItem(id) {
+  state.printQueue.delete(id);
+  saveQueueToStorage();
+  buildQueuePrintItems();
+  renderQueueItemsList();
+  regeneratePrintLabels();
+  if (state.printQueue.size === 0) {
+    closePrintModal();
+    showToast('Cola vaciada.');
+  }
+}
+
+function clearPrintQueue() {
+  state.printQueue.clear();
+  saveQueueToStorage();
+  closePrintModal();
+  showToast('Cola de impresión vaciada.');
+}
+
+function changeBorderStyle(style) {
+  state.borderStyle = style;
+  regeneratePrintLabels();
+}
+
+// -------------------------------------------------------------
 // MODAL: IMPRESIÓN DE HOJA DE ETIQUETAS (10 POR HOJA CARTA)
 // -------------------------------------------------------------
 async function openPrintSingle(id) {
@@ -849,8 +1097,10 @@ function regeneratePrintLabels() {
   container.innerHTML = '';
 
   state.currentPrintItems.forEach((item, idx) => {
-    const card = document.createElement('div');
-    card.className = 'label-card bg-white border border-emerald-800/80 rounded-lg p-1.5 shadow-sm flex flex-col justify-between text-xs';
+    const borderClass = state.borderStyle === 'dashed' ? 'border-dashed border-2 border-slate-400' :
+                        state.borderStyle === 'none' ? 'border-none' :
+                        'border-solid border border-emerald-800/80';
+    card.className = `label-card ${borderClass} bg-white rounded-lg p-1.5 shadow-sm flex flex-col justify-between text-xs`;
     card.style.height = '48mm';
     card.style.maxHeight = '48mm';
 

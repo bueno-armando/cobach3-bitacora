@@ -1083,7 +1083,18 @@ function changePrintCopies(val) {
 function fillSheetWithSingle() {
   state.printCopies = 10;
   document.getElementById('print-copies-input').value = 10;
+  
+  // Si se abrió desde la cola y la cola tiene 1 solo elemento, sincronizar sus copias
+  if (state.printQueue && state.printQueue.size === 1) {
+    const onlyItem = Array.from(state.printQueue.values())[0];
+    onlyItem.copies = 10;
+    saveQueueToStorage();
+    renderQueueItemsList();
+    updateQueueBadge();
+  }
+
   rebuildPrintItems();
+  showToast('Hoja configurada con 10 etiquetas para imprimir');
 }
 
 function rebuildPrintItems() {
@@ -1102,7 +1113,8 @@ function rebuildPrintItems() {
 }
 
 function regeneratePrintLabels() {
-  const codeType = document.getElementById('print-code-type').value; // 'barcode', 'qr', 'both'
+  const codeType = document.getElementById('print-code-type')?.value || 'barcode'; // 'barcode', 'qr', 'both'
+  const codeSource = document.getElementById('print-code-source')?.value || 'auto'; // 'auto', 'interno', 'oficial'
   const container = document.getElementById('print-sheet-area');
   container.innerHTML = '';
 
@@ -1122,12 +1134,35 @@ function regeneratePrintLabels() {
     const borderClass = state.borderStyle === 'dashed' ? 'border-dashed border-2 border-slate-400' :
                         state.borderStyle === 'none' ? 'border-none' :
                         'border-solid border border-emerald-800/80';
-    card.className = `label-card ${borderClass} bg-white rounded-lg p-1.5 shadow-sm flex flex-col justify-between text-xs`;
+    // Esquinas cuadradas (rounded-none) para corte recto con tijeras o guillotina
+    card.className = `label-card ${borderClass} bg-white rounded-none p-1.5 shadow-xs flex flex-col justify-between text-xs`;
     card.style.height = '48mm';
     card.style.maxHeight = '48mm';
 
-    // Texto del código a codificar (código oficial si tiene, o código interno)
-    const codeValue = item.codigo_oficial || item.codigo_interno;
+    // Determinar valor a codificar según el selector (oficial, interno o auto)
+    let codeValue = item.codigo_interno;
+    let isOfficialUsed = false;
+
+    if (codeSource === 'oficial') {
+      if (item.codigo_oficial) {
+        codeValue = item.codigo_oficial;
+        isOfficialUsed = true;
+      } else {
+        codeValue = item.codigo_interno;
+        isOfficialUsed = false;
+      }
+    } else if (codeSource === 'auto') {
+      if (item.codigo_oficial) {
+        codeValue = item.codigo_oficial;
+        isOfficialUsed = true;
+      } else {
+        codeValue = item.codigo_interno;
+        isOfficialUsed = false;
+      }
+    } else { // 'interno'
+      codeValue = item.codigo_interno;
+      isOfficialUsed = false;
+    }
 
     // 1. CUERPO PRINCIPAL: LOGO AL LADO DEL CÓDIGO (MAXIMIZANDO ALTURA Y ESPACIO)
     let mainBodyHtml = '';
@@ -1158,9 +1193,9 @@ function regeneratePrintLabels() {
           <div class="flex-1 flex items-center justify-center gap-3 min-w-0">
             <div id="qr-div-${idx}" class="flex-shrink-0"></div>
             <div class="flex flex-col justify-center min-w-0 text-left">
-              <div class="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight tracking-tight">${item.codigo_interno}</div>
-              ${item.codigo_oficial ? `<div class="text-sm font-bold text-emerald-700 mt-1">OFICIAL: #${item.codigo_oficial}</div>` : '<div class="text-[9.5px] font-bold text-amber-600 mt-1">PROVISIONAL</div>'}
-              <div class="text-[8.5px] font-bold text-slate-500 uppercase mt-1">${item.origen}</div>
+              <div class="font-mono font-black text-lg sm:text-xl text-slate-900 leading-tight tracking-tight">${isOfficialUsed ? `#${item.codigo_oficial}` : item.codigo_interno}</div>
+              ${item.codigo_oficial ? `<div class="text-[11px] font-bold text-emerald-700 mt-0.5">${isOfficialUsed ? `INT: ${item.codigo_interno}` : `OFICIAL: #${item.codigo_oficial}`}</div>` : '<div class="text-[9.5px] font-bold text-amber-600 mt-0.5">PROVISIONAL</div>'}
+              <div class="text-[8.5px] font-bold text-slate-500 uppercase mt-0.5">${item.origen}</div>
             </div>
           </div>
         </div>
@@ -1227,7 +1262,7 @@ function regeneratePrintLabels() {
           qrContainer.innerHTML = '';
           const qrSize = codeType === 'both' ? 110 : 100;
           new QRCode(qrContainer, {
-            text: `COBACH-PL3:${item.codigo_interno}${item.codigo_oficial ? `:${item.codigo_oficial}` : ''}`,
+            text: `COBACH-PL3:${codeValue}${item.codigo_oficial && !isOfficialUsed ? `:${item.codigo_oficial}` : ''}`,
             width: qrSize,
             height: qrSize,
             colorDark: '#064e3b',

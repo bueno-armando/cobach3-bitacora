@@ -78,3 +78,4 @@ echo doble clic en: iniciar_sistema.bat
 echo ========================================================
 echo.
 pause
+

@@ -1159,18 +1159,18 @@ function regeneratePrintLabels() {
       `;
     } else { // both
       mainBodyHtml = `
-        <div class="flex items-center justify-between gap-1.5 h-[35mm] overflow-hidden px-0.5">
+        <div class="flex items-center justify-between gap-2 h-[34mm] overflow-hidden px-0.5">
           <!-- Logo Plantel 3 -->
-          <div class="flex flex-col items-center justify-center flex-shrink-0">
-            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[29mm] max-h-[29mm] w-auto object-contain">
-            <span class="text-[7px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
+          <div class="flex flex-col items-center justify-center flex-shrink-0 h-[30mm]">
+            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[26mm] max-h-[26mm] w-auto object-contain">
+            <span class="text-[6.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
           </div>
           <!-- Código de Barras (Centro) -->
-          <div class="flex-1 flex items-center justify-center min-w-0 h-full overflow-hidden">
-            <svg id="barcode-svg-${idx}" class="w-full h-full max-h-[35mm]"></svg>
+          <div class="flex-1 flex items-center justify-center min-w-0 h-[30mm] overflow-hidden">
+            <svg id="barcode-svg-${idx}" class="h-[29mm] max-h-[29mm] w-auto max-w-full"></svg>
           </div>
-          <!-- Código QR (Derecha) -->
-          <div id="qr-div-${idx}" class="flex-shrink-0 flex items-center justify-center"></div>
+          <!-- Código QR (Derecha) emparejado en altura -->
+          <div id="qr-div-${idx}" class="qr-box flex-shrink-0 flex items-center justify-center h-[29mm] w-[29mm]"></div>
         </div>
       `;
     }
@@ -1193,9 +1193,9 @@ function regeneratePrintLabels() {
     // Renderizar código de barras si aplica
     if (codeType === 'barcode' || codeType === 'both') {
       try {
-        const barHeight = codeType === 'both' ? 42 : 50;
-        const barWidth = codeType === 'both' ? 1.35 : 1.75;
-        const barFontSize = codeType === 'both' ? 10 : 12;
+        const barHeight = codeType === 'both' ? 48 : 50;
+        const barWidth = codeType === 'both' ? 1.3 : 1.75;
+        const barFontSize = codeType === 'both' ? 11 : 12;
         JsBarcode(`#barcode-svg-${idx}`, codeValue, {
           format: "CODE128",
           width: barWidth,
@@ -1203,7 +1203,7 @@ function regeneratePrintLabels() {
           displayValue: true,
           fontSize: barFontSize,
           font: "monospace",
-          textMargin: 1,
+          textMargin: 2,
           margin: 0
         });
       } catch (e) {
@@ -1214,7 +1214,7 @@ function regeneratePrintLabels() {
     // Renderizar código QR si aplica
     if (codeType === 'qr' || codeType === 'both') {
       try {
-        const qrSize = codeType === 'both' ? 76 : 88;
+        const qrSize = codeType === 'both' ? 110 : 100;
         new QRCode(document.getElementById(`qr-div-${idx}`), {
           text: `COBACH-PL3:${item.codigo_interno}${item.codigo_oficial ? `:${item.codigo_oficial}` : ''}`,
           width: qrSize,

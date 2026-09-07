@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inventario de Activos | COBACH Plantel 3</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="apple-touch-icon" href="/assets/favicon.png">
   <!-- Tailwind CSS via CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -65,6 +67,17 @@
     }
     .btn-pop-sm:active {
       transform: scale(0.92) !important;
+    }
+
+    /* Ajustes de emparejamiento de códigos en las etiquetas */
+    .label-card .qr-box img,
+    .label-card .qr-box canvas {
+      display: block !important;
+      max-height: 29mm !important;
+      max-width: 29mm !important;
+      height: 100% !important;
+      width: 100% !important;
+      object-fit: contain !important;
     }
 
     /* Estilos de Impresión de Hoja de Etiquetas (10 por hoja Carta: 2 columnas x 5 filas) */
@@ -681,9 +694,9 @@
           <div class="flex items-center gap-1.5">
             <label for="print-border-style" class="text-xs font-semibold text-slate-600">Líneas de corte:</label>
             <select id="print-border-style" onchange="changeBorderStyle(this.value)" class="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
-              <option value="solid" selected>Línea continua (para recortar)</option>
-              <option value="dashed">Línea punteada (tijeras)</option>
-              <option value="none">Sin líneas (autoadhesiva)</option>
+              <option value="solid" selected>Línea continua</option>
+              <option value="dashed">Línea punteada</option>
+              <option value="none">Sin líneas</option>
             </select>
           </div>
         </div>

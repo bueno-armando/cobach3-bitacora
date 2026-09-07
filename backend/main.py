@@ -1,6 +1,8 @@
 import os
+import datetime
 from typing import Optional
 from fastapi import FastAPI, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -98,6 +100,52 @@ def get_catalogos(db: Session = Depends(get_db)):
 @app.get("/api/stats", summary="Estadísticas generales del inventario")
 def get_stats(db: Session = Depends(get_db)):
     return crud.get_dashboard_stats(db=db)
+
+
+@app.get("/api/export/excel", summary="Exportar inventario a hoja de cálculo Excel (.xlsx)")
+def export_excel(
+    q: Optional[str] = Query(None, description="Búsqueda por texto"),
+    origen: Optional[str] = Query(None, description="Filtrar por origen"),
+    ubicacion_id: Optional[int] = Query(None, description="Filtrar por ubicación"),
+    categoria_id: Optional[int] = Query(None, description="Filtrar por categoría"),
+    resguardante_id: Optional[int] = Query(None, description="Filtrar por resguardante"),
+    estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus etiqueta"),
+    estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo"),
+    ids: Optional[str] = Query(None, description="Lista de IDs separados por coma para selección"),
+    scope: Optional[str] = Query(None, description="Nombre descriptivo del ámbito (ej. GASTO, SELECCION)"),
+    db: Session = Depends(get_db)
+):
+    id_list = None
+    if ids and ids.strip():
+        try:
+            id_list = [int(x.strip()) for x in ids.split(",") if x.strip().isdigit()]
+        except Exception:
+            id_list = None
+
+    excel_stream = crud.export_activos_to_excel(
+        db=db,
+        q=q,
+        origen=origen,
+        ubicacion_id=ubicacion_id,
+        categoria_id=categoria_id,
+        resguardante_id=resguardante_id,
+        estatus_etiqueta=estatus_etiqueta,
+        estatus_activo=estatus_activo,
+        ids=id_list
+    )
+
+    date_str = datetime.date.today().strftime("%Y-%m-%d")
+    scope_suffix = f"_{scope.strip().upper()}" if scope and scope.strip() else (f"_{origen.strip().upper()}" if origen else "")
+    filename = f"Inventario_COBACH3{scope_suffix}_{date_str}.xlsx"
+
+    return StreamingResponse(
+        excel_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
 
 
 # Montar la carpeta frontend si existe

@@ -70,8 +70,10 @@
     }
 
     /* Ajustes de emparejamiento de códigos en las etiquetas */
-    .label-card .qr-box img,
     .label-card .qr-box canvas {
+      display: none !important;
+    }
+    .label-card .qr-box img {
       display: block !important;
       max-height: 29mm !important;
       max-width: 29mm !important;
@@ -209,6 +211,16 @@
           <i class="fa-solid fa-tags text-emerald-400"></i>
           <span class="hidden md:inline">Cola de Impresión</span>
           <span id="queue-badge" class="bg-emerald-600 text-emerald-100 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none">0</span>
+        </button>
+
+        <button 
+          onclick="openExportModal()" 
+          id="btn-open-export"
+          class="btn-pop px-3.5 py-2 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2"
+          title="Exportar inventario a Excel (.xlsx)"
+        >
+          <i class="fa-solid fa-file-excel text-emerald-400"></i>
+          <span class="hidden md:inline">Exportar Excel</span>
         </button>
 
         <button 
@@ -425,6 +437,11 @@
       <!-- Botón para agregar seleccionados a la cola de impresión -->
       <button onclick="addSelectedToQueue()" class="btn-pop px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5">
         <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-tags"></i> Agregar a Cola
+      </button>
+
+      <!-- Botón para exportar la selección a Excel -->
+      <button onclick="exportSelectedToExcel()" class="btn-pop px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5">
+        <i class="fa-solid fa-file-excel text-emerald-200"></i> Exportar (.xlsx)
       </button>
 
       <!-- Botón para imprimir inmediatamente la selección -->
@@ -726,6 +743,10 @@
             <i class="fa-solid fa-layer-group text-emerald-600"></i> Lista de Activos a Imprimir
           </h4>
           <div class="flex items-center gap-2">
+            <button onclick="exportQueueToExcel()" class="text-xs text-emerald-700 hover:text-emerald-900 font-semibold transition flex items-center gap-1">
+              <i class="fa-solid fa-file-excel"></i> Descargar Excel
+            </button>
+            <span class="text-slate-300">|</span>
             <button onclick="clearPrintQueue()" class="text-xs text-red-600 hover:text-red-800 font-semibold transition flex items-center gap-1">
               <i class="fa-solid fa-trash-can"></i> Vaciar cola
             </button>
@@ -773,6 +794,81 @@
         <button type="button" id="btn-confirm-delete" onclick="confirmDelete()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow">
           Sí, Eliminar
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EXPORTAR A EXCEL -->
+  <div id="modal-export" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 p-6 animate-in fade-in zoom-in duration-150">
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-file-excel"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-800">Exportar a Excel (.xlsx)</h3>
+            <p class="text-[11px] text-slate-400">Descarga reportes listos para auditoría y consulta</p>
+          </div>
+        </div>
+        <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 my-4">
+        <!-- Opción 1: Vista / Filtro actual (si hay filtros) -->
+        <div id="export-opt-filtered" class="p-3.5 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl hover:bg-emerald-50 transition cursor-pointer" onclick="downloadExcelFiltered()">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-filter text-emerald-600 text-base"></i>
+              <div>
+                <h4 class="text-xs font-bold text-slate-800" id="export-filtered-title">Exportar Vista / Filtro Actual</h4>
+                <p class="text-[11px] text-slate-500" id="export-filtered-desc">Descarga los activos que coinciden con los filtros actuales</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-emerald-700 flex items-center gap-1">
+              Descargar <i class="fa-solid fa-arrow-down"></i>
+            </span>
+          </div>
+        </div>
+
+        <!-- Opción 2: Base de Datos Completa -->
+        <div class="p-3.5 border border-slate-200 bg-slate-50/50 rounded-xl hover:bg-slate-100 hover:border-slate-300 transition cursor-pointer" onclick="downloadExcelAll()">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-database text-slate-600 text-base"></i>
+              <div>
+                <h4 class="text-xs font-bold text-slate-800">Exportar Inventario Completo</h4>
+                <p class="text-[11px] text-slate-500">Descarga los 1,406 activos de todas las áreas (GASTO, C.A., Central, Auditorio)</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-slate-600 flex items-center gap-1">
+              Descargar <i class="fa-solid fa-arrow-down"></i>
+            </span>
+          </div>
+        </div>
+
+        <!-- Opción 3: Cola de Impresión (si tiene elementos) -->
+        <div id="export-opt-queue" class="hidden p-3.5 border border-slate-200 bg-slate-50/50 rounded-xl hover:bg-slate-100 transition cursor-pointer" onclick="exportQueueToExcel()">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fa-solid fa-tags text-blue-600 text-base"></i>
+              <div>
+                <h4 class="text-xs font-bold text-slate-800">Exportar Cola de Impresión</h4>
+                <p class="text-[11px] text-slate-500"><span id="export-queue-count">0</span> activo(s) listados en la cola</p>
+              </div>
+            </div>
+            <span class="text-xs font-bold text-blue-700 flex items-center gap-1">
+              Descargar <i class="fa-solid fa-arrow-down"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-500 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info text-emerald-600 text-xs"></i>
+        <span>Los archivos se descargan con formato estándar <strong>Inventario_COBACH3_[Ámbito]_[Fecha].xlsx</strong> con autofiltros y cabecera institucional.</span>
       </div>
     </div>
   </div>

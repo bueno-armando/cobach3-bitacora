@@ -1214,15 +1214,19 @@ function regeneratePrintLabels() {
     // Renderizar código QR si aplica
     if (codeType === 'qr' || codeType === 'both') {
       try {
-        const qrSize = codeType === 'both' ? 110 : 100;
-        new QRCode(document.getElementById(`qr-div-${idx}`), {
-          text: `COBACH-PL3:${item.codigo_interno}${item.codigo_oficial ? `:${item.codigo_oficial}` : ''}`,
-          width: qrSize,
-          height: qrSize,
-          colorDark: '#064e3b',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M
-        });
+        const qrContainer = document.getElementById(`qr-div-${idx}`);
+        if (qrContainer) {
+          qrContainer.innerHTML = '';
+          const qrSize = codeType === 'both' ? 110 : 100;
+          new QRCode(qrContainer, {
+            text: `COBACH-PL3:${item.codigo_interno}${item.codigo_oficial ? `:${item.codigo_oficial}` : ''}`,
+            width: qrSize,
+            height: qrSize,
+            colorDark: '#064e3b',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
       } catch (e) {
         console.error('Error generando QR:', e);
       }
@@ -1257,4 +1261,97 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ==========================================
+// MÓDULO DE EXPORTACIÓN A EXCEL (.xlsx)
+// ==========================================
+function openExportModal() {
+  const modal = document.getElementById('modal-export');
+  const optFiltered = document.getElementById('export-opt-filtered');
+  const filteredTitle = document.getElementById('export-filtered-title');
+  const filteredDesc = document.getElementById('export-filtered-desc');
+  const optQueue = document.getElementById('export-opt-queue');
+  const queueCountEl = document.getElementById('export-queue-count');
+
+  // Detectar si hay filtros activos
+  const hasFilter = Boolean(
+    state.origen || 
+    state.q || 
+    state.ubicacionId || 
+    state.categoriaId || 
+    state.estatusEtiqueta || 
+    state.estatusActivo
+  );
+
+  if (hasFilter) {
+    optFiltered.classList.remove('hidden');
+    let filterLabel = state.origen ? `Área: ${state.origen}` : '';
+    if (state.q) filterLabel += (filterLabel ? ' + ' : '') + `"${state.q}"`;
+    if (state.estatusEtiqueta === 'PENDIENTE_ETIQUETA') filterLabel += ' (Pendientes)';
+
+    filteredTitle.textContent = `Exportar Vista Filtrada (${state.total.toLocaleString()} activos)`;
+    filteredDesc.textContent = `Descarga únicamente los registros que cumplen: ${filterLabel || 'Filtro actual'}`;
+  } else {
+    optFiltered.classList.add('hidden');
+  }
+
+  // Opción de cola si hay elementos
+  if (state.printQueue && state.printQueue.length > 0) {
+    optQueue.classList.remove('hidden');
+    queueCountEl.textContent = state.printQueue.length;
+  } else {
+    optQueue.classList.add('hidden');
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeExportModal() {
+  const modal = document.getElementById('modal-export');
+  if (modal) modal.classList.add('hidden');
+}
+
+function downloadExcelAll() {
+  closeExportModal();
+  showToast('Generando reporte completo de inventario...');
+  window.location.href = '/api/export/excel';
+}
+
+function downloadExcelFiltered() {
+  closeExportModal();
+  const params = new URLSearchParams();
+  if (state.q) params.append('q', state.q);
+  if (state.origen) {
+    params.append('origen', state.origen);
+    params.append('scope', state.origen);
+  }
+  if (state.ubicacionId) params.append('ubicacion_id', state.ubicacionId);
+  if (state.categoriaId) params.append('categoria_id', state.categoriaId);
+  if (state.estatusEtiqueta) params.append('estatus_etiqueta', state.estatusEtiqueta);
+  if (state.estatusActivo) params.append('estatus_activo', state.estatusActivo);
+
+  showToast(`Generando reporte filtrado (${state.total} activos)...`);
+  window.location.href = '/api/export/excel?' + params.toString();
+}
+
+function exportSelectedToExcel() {
+  if (state.selectedIds.size === 0) {
+    showToast('Selecciona al menos un activo con las casillas', true);
+    return;
+  }
+  const ids = Array.from(state.selectedIds).join(',');
+  showToast(`Descargando ${state.selectedIds.size} activos seleccionados en Excel...`);
+  window.location.href = `/api/export/excel?ids=${ids}&scope=SELECCION`;
+}
+
+function exportQueueToExcel() {
+  if (!state.printQueue || state.printQueue.length === 0) {
+    showToast('La cola de impresión no tiene activos acumulados', true);
+    return;
+  }
+  closeExportModal();
+  const ids = state.printQueue.map(item => item.id).join(',');
+  showToast(`Descargando ${state.printQueue.length} activos de la cola en Excel...`);
+  window.location.href = `/api/export/excel?ids=${ids}&scope=COLA`;
 }

@@ -1,8 +1,12 @@
+import io
 import math
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 from fastapi import HTTPException
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 from backend.models import Activo, Categoria, Ubicacion, Resguardante, HistorialEtiqueta
 from backend.schemas import (
@@ -436,3 +440,145 @@ def get_dashboard_stats(db: Session) -> Dict[str, Any]:
             "bajas": total_baja
         }
     }
+
+
+def export_activos_to_excel(
+    db: Session,
+    q: Optional[str] = None,
+    origen: Optional[str] = None,
+    ubicacion_id: Optional[int] = None,
+    categoria_id: Optional[int] = None,
+    resguardante_id: Optional[int] = None,
+    estatus_etiqueta: Optional[str] = None,
+    estatus_activo: Optional[str] = None,
+    ids: Optional[List[int]] = None
+) -> io.BytesIO:
+    query = db.query(Activo).options(
+        joinedload(Activo.categoria),
+        joinedload(Activo.ubicacion),
+        joinedload(Activo.resguardante)
+    )
+
+    if ids:
+        query = query.filter(Activo.id.in_(ids))
+    else:
+        if origen:
+            query = query.filter(Activo.origen == origen)
+        if estatus_etiqueta:
+            query = query.filter(Activo.estatus_etiqueta == estatus_etiqueta)
+        if estatus_activo:
+            est_up = estatus_activo.strip().upper()
+            if est_up in ("OPERATIVO", "ACTIVO"):
+                query = query.filter(Activo.estatus_activo.in_(["OPERATIVO", "ACTIVO"]))
+            else:
+                query = query.filter(Activo.estatus_activo == est_up)
+        if ubicacion_id:
+            query = query.filter(Activo.ubicacion_id == ubicacion_id)
+        if categoria_id:
+            query = query.filter(Activo.categoria_id == categoria_id)
+        if resguardante_id:
+            query = query.filter(Activo.resguardante_id == resguardante_id)
+        if q and q.strip():
+            term = f"%{q.strip()}%"
+            query = query.filter(
+                or_(
+                    Activo.codigo_interno.ilike(term),
+                    Activo.codigo_oficial.ilike(term),
+                    Activo.descripcion.ilike(term),
+                    Activo.marca.ilike(term),
+                    Activo.modelo.ilike(term),
+                    Activo.numero_serie.ilike(term)
+                )
+            )
+
+    activos = query.order_by(Activo.id.asc()).all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Inventario Activos"
+
+    headers = [
+        "ID",
+        "Código Interno",
+        "Código Oficial (Etiqueta Verde)",
+        "Estatus Etiqueta",
+        "Estatus Operativo",
+        "Descripción",
+        "Marca",
+        "Modelo",
+        "Número de Serie",
+        "Ubicación",
+        "Categoría",
+        "Resguardante",
+        "Origen",
+        "Fecha Registro",
+        "Observaciones"
+    ]
+    ws.append(headers)
+
+    header_fill = PatternFill(start_color="064E3B", end_color="064E3B", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    ws.row_dimensions[1].height = 26
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_align
+
+    thin_border = Border(
+        left=Side(style='thin', color='E2E8F0'),
+        right=Side(style='thin', color='E2E8F0'),
+        top=Side(style='thin', color='E2E8F0'),
+        bottom=Side(style='thin', color='E2E8F0')
+    )
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+
+    for a in activos:
+        est_etiq = "OFICIAL" if a.estatus_etiqueta == "ETIQUETADO_OFICIAL" else "PENDIENTE"
+        row_data = [
+            a.id,
+            a.codigo_interno,
+            a.codigo_oficial or "",
+            est_etiq,
+            a.estatus_activo or "OPERATIVO",
+            a.descripcion,
+            a.marca or "",
+            a.modelo or "",
+            a.numero_serie or "",
+            a.ubicacion.nombre if a.ubicacion else "",
+            a.categoria.nombre if a.categoria else "",
+            a.resguardante.nombre if a.resguardante else "",
+            a.origen,
+            a.created_at.strftime("%Y-%m-%d") if a.created_at else "",
+            a.observaciones or ""
+        ]
+        ws.append(row_data)
+
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+        for idx, cell in enumerate(row):
+            cell.border = thin_border
+            if idx in (0, 1, 2, 3, 4, 12, 13):
+                cell.alignment = center_align
+            else:
+                cell.alignment = left_align
+
+    for col in ws.columns:
+        col_letter = get_column_letter(col[0].column)
+        max_len = 0
+        for cell in col:
+            val_str = str(cell.value or "")
+            if len(val_str) > max_len:
+                max_len = len(val_str)
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = ws.dimensions
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output

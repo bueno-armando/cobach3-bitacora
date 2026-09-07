@@ -144,8 +144,7 @@ Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9
     * Modal `Editar Activo`.
     * Modal `Eliminar Activo` con confirmación.
     * Modal `Detalle del Activo`.
-    * Modal `Asignar Etiqueta Verde`.
-    * Modal `Imprimir Etiqueta`: Genera una etiqueta adhesiva con logo del Halcón, código interno, código QR escaneable y metadatos, optimizada para `@media print` (1 clic para imprimir en impresoras térmicas o de hojas).
+    * Modal `Imprimir Etiquetas`: Genera hojas de 10 etiquetas por hoja Carta (cuadrícula 2x5, estándar 48 mm de alto) con selección múltiple de activos. Diseño con Mascota Halcón y Código (Barras Code 128 / QR / Ambos) lado a lado a la misma altura (~31mm) ocupando la mayor parte de la etiqueta, con información de activo (descripción, serie, aula y origen) en la base. Optimizado para impresión sin hojas en blanco ni dependencias de internet.
 
 ---
 

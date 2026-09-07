@@ -10,7 +10,9 @@ const state = {
   totalPages: 1,
   totalItems: 0,
   deletingId: null,
-  rawCatalogos: { ubicaciones: [], categorias: [], resguardantes: [] }
+  rawCatalogos: { ubicaciones: [], categorias: [], resguardantes: [] },
+  selectedIds: new Set(),
+  currentPrintItems: [] // Lista de activos para la hoja de etiquetas
 };
 
 // Inicialización
@@ -44,7 +46,6 @@ async function loadCatalogos() {
     const data = await res.json();
     state.rawCatalogos = data;
 
-    // Selects de filtros
     const selectUbi = document.getElementById('filter-ubicacion');
     selectUbi.innerHTML = '<option value="">Todas las ubicaciones</option>';
     data.ubicaciones.forEach(u => {
@@ -63,7 +64,6 @@ async function loadCatalogos() {
       selectCat.appendChild(opt);
     });
 
-    // Datalists para autocompletado en formulario
     populateDatalist('datalist-ubicaciones', data.ubicaciones);
     populateDatalist('datalist-categorias', data.categorias);
     populateDatalist('datalist-resguardantes', data.resguardantes);
@@ -88,7 +88,7 @@ async function loadActivos() {
   const tbody = document.getElementById('activos-table-body');
   tbody.innerHTML = `
     <tr>
-      <td colspan="8" class="py-12 text-center text-slate-400">
+      <td colspan="9" class="py-12 text-center text-slate-400">
         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-600"></i>
         <p>Consultando base de datos de activos...</p>
       </td>
@@ -128,7 +128,7 @@ async function loadActivos() {
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="py-8 text-center text-red-500 font-medium">
+        <td colspan="9" class="py-8 text-center text-red-500 font-medium">
           <i class="fa-solid fa-circle-exclamation text-xl mb-1"></i>
           <p>Ocurrió un error al consultar los activos.</p>
         </td>
@@ -145,7 +145,7 @@ function renderTable(items) {
   if (!items || items.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="8" class="py-12 text-center text-slate-400">
+        <td colspan="9" class="py-12 text-center text-slate-400">
           <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-300"></i>
           <p class="font-medium text-slate-600">No se encontraron activos con los filtros seleccionados.</p>
           <p class="text-xs text-slate-400 mt-1">Intenta con otro término de búsqueda o limpia los filtros.</p>
@@ -156,7 +156,8 @@ function renderTable(items) {
   }
 
   tbody.innerHTML = items.map(item => {
-    // Badge de origen
+    const isChecked = state.selectedIds.has(item.id) ? 'checked' : '';
+
     let origenBadge = '';
     if (item.origen === 'GASTO') {
       origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-gasto">GASTO</span>';
@@ -168,7 +169,6 @@ function renderTable(items) {
       origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-auditorio">AUDITORIO</span>';
     }
 
-    // Badge de etiqueta oficial verde
     let tagBadge = '';
     let btnAsignarTag = '';
     if (item.estatus_etiqueta === 'ETIQUETADO_OFICIAL' && item.codigo_oficial) {
@@ -194,7 +194,6 @@ function renderTable(items) {
       `;
     }
 
-    // Badge de estado operativo / físico
     let estatusFisicoBadge = '';
     if (item.estatus_activo === 'OPERATIVO') {
       estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Operativo</span>';
@@ -208,6 +207,9 @@ function renderTable(items) {
 
     return `
       <tr class="hover:bg-slate-50 transition">
+        <td class="py-3 px-3 text-center">
+          <input type="checkbox" class="row-checkbox rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" data-id="${item.id}" ${isChecked} onchange="toggleRowSelection(${item.id}, this)">
+        </td>
         <td class="py-3 px-4 font-mono font-bold text-slate-800 text-xs">${item.codigo_interno}</td>
         <td class="py-3 px-4">${tagBadge}</td>
         <td class="py-3 px-4">
@@ -245,7 +247,7 @@ function renderTable(items) {
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <button 
-              onclick="openPrintModal(${item.id}, '${item.codigo_interno}', '${item.codigo_oficial || ''}', '${escapeHtml(item.descripcion)}', '${escapeHtml(item.numero_serie || '')}', '${escapeHtml(item.ubicacion || '')}')"
+              onclick="openPrintSingle(${item.id})"
               title="Imprimir Etiqueta"
               class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition"
             >
@@ -266,6 +268,54 @@ function renderTable(items) {
   }).join('');
 }
 
+// -------------------------------------------------------------
+// GESTIÓN DE SELECCIÓN MÚLTIPLE (LOTE DE IMPRESIÓN)
+// -------------------------------------------------------------
+function toggleRowSelection(id, checkbox) {
+  if (checkbox.checked) {
+    state.selectedIds.add(id);
+  } else {
+    state.selectedIds.delete(id);
+  }
+  updateSelectedCountUI();
+}
+
+function toggleSelectAll(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.row-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+    const id = parseInt(cb.dataset.id, 10);
+    if (masterCheckbox.checked) {
+      state.selectedIds.add(id);
+    } else {
+      state.selectedIds.delete(id);
+    }
+  });
+  updateSelectedCountUI();
+}
+
+function clearSelection() {
+  state.selectedIds.clear();
+  const master = document.getElementById('select-all');
+  if (master) master.checked = false;
+  document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+  updateSelectedCountUI();
+}
+
+function updateSelectedCountUI() {
+  const count = state.selectedIds.size;
+  const bar = document.getElementById('bulk-actions-bar');
+  const countBadge = document.getElementById('selected-count-badge');
+
+  if (countBadge) countBadge.textContent = count;
+
+  if (count > 0) {
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
 // UI Paginación
 function updatePaginationUI() {
   document.getElementById('current-page').textContent = state.page;
@@ -283,6 +333,10 @@ function updatePaginationUI() {
   } else {
     badge.classList.add('hidden');
   }
+
+  // Desmarcar select-all al cambiar de página
+  const master = document.getElementById('select-all');
+  if (master) master.checked = false;
 }
 
 // Pestañas
@@ -340,6 +394,7 @@ function resetAllFilters() {
   state.categoria_id = '';
   state.estatus_activo = '';
   state.page = 1;
+  clearSelection();
   loadActivos();
 }
 
@@ -372,7 +427,6 @@ function openCreateModal() {
   document.getElementById('asset-form-icon').className = 'fa-solid fa-plus-circle text-amber-400 text-lg';
   document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Registrar Activo';
   
-  // Limpiar campos
   document.getElementById('form-origen').value = state.tab === 'C.A.' ? 'C.A.' : 'GASTO';
   document.getElementById('form-estatus-operativo').value = 'OPERATIVO';
   document.getElementById('form-codigo-interno').value = '';
@@ -500,6 +554,8 @@ async function confirmDelete() {
     const res = await fetch(`/api/activos/${state.deletingId}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Error al eliminar');
     closeDeleteModal();
+    state.selectedIds.delete(state.deletingId);
+    updateSelectedCountUI();
     showToast('Activo eliminado correctamente');
     await Promise.all([loadStats(), loadActivos()]);
   } catch (err) {
@@ -552,7 +608,7 @@ async function openDetailModal(id) {
       <button onclick="closeDetailModal(); openEditModal(${a.id})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
         <i class="fa-solid fa-pen-to-square"></i> Editar
       </button>
-      <button onclick="openPrintModal(${a.id}, '${a.codigo_interno}', '${a.codigo_oficial || ''}', '${escapeHtml(a.descripcion)}', '${escapeHtml(a.numero_serie || '')}', '${escapeHtml(a.ubicacion || '')}')" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
+      <button onclick="closeDetailModal(); openPrintSingle(${a.id})" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
         <i class="fa-solid fa-print"></i> Imprimir Etiqueta
       </button>
     `;
@@ -708,40 +764,153 @@ async function submitTag(e) {
 }
 
 // -------------------------------------------------------------
-// MODAL: IMPRIMIR ETIQUETA LOCAL CON QR Y LOGO HALCÓN
+// MODAL: IMPRESIÓN DE HOJA DE ETIQUETAS (10 POR HOJA CARTA)
 // -------------------------------------------------------------
-function openPrintModal(id, codInt, codOficial, desc, serie, ubi) {
-  document.getElementById('ticket-codigo').textContent = codInt;
-  
-  const tagOficialEl = document.getElementById('ticket-tag-oficial');
-  if (codOficial && codOficial.trim()) {
-    tagOficialEl.textContent = `ETIQUETA VERDE OFICIAL: #${codOficial}`;
-    tagOficialEl.classList.remove('hidden');
-  } else {
-    tagOficialEl.classList.add('hidden');
+async function openPrintSingle(id) {
+  try {
+    const res = await fetch(`/api/activos/${id}`);
+    if (!res.ok) throw new Error('No se pudo obtener el activo');
+    const activo = await res.json();
+    state.currentPrintItems = [activo];
+    showPrintModal();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function openBulkPrintModal() {
+  if (state.selectedIds.size === 0) {
+    showToast('Selecciona al menos un activo para imprimir', true);
+    return;
   }
 
-  document.getElementById('ticket-desc').textContent = desc || 'ACTIVO COBACH';
-  document.getElementById('ticket-serie').textContent = serie ? `SERIE: ${serie}` : 'SIN NÚMERO DE SERIE';
-  document.getElementById('ticket-ubi').textContent = `UBICACIÓN: ${ubi || 'PLANTEL 3'}`;
+  try {
+    showToast(`Preparando hoja para ${state.selectedIds.size} activo(s)...`);
+    const ids = Array.from(state.selectedIds);
+    // Obtener detalles de todos los activos seleccionados
+    const promises = ids.map(id => fetch(`/api/activos/${id}`).then(r => r.json()));
+    const items = await Promise.all(promises);
+    state.currentPrintItems = items;
+    showPrintModal();
+  } catch (err) {
+    showToast('Error al preparar etiquetas', true);
+  }
+}
 
-  // Generar Código QR
-  const qrContainer = document.getElementById('ticket-qr');
-  qrContainer.innerHTML = '';
-  new QRCode(qrContainer, {
-    text: `COBACH-PL3:${codInt}${codOficial ? `:${codOficial}` : ''}`,
-    width: 100,
-    height: 100,
-    colorDark: '#064e3b',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M
-  });
-
+function showPrintModal() {
+  document.getElementById('print-sheet-count').textContent = state.currentPrintItems.length;
+  const pages = Math.ceil(state.currentPrintItems.length / 10) || 1;
+  document.getElementById('print-pages-count').textContent = pages;
+  regeneratePrintLabels();
   document.getElementById('modal-print').classList.remove('hidden');
 }
 
 function closePrintModal() {
   document.getElementById('modal-print').classList.add('hidden');
+}
+
+function regeneratePrintLabels() {
+  const codeType = document.getElementById('print-code-type').value; // 'barcode', 'qr', 'both'
+  const container = document.getElementById('print-sheet-area');
+  container.innerHTML = '';
+
+  state.currentPrintItems.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.className = 'label-card bg-white border border-emerald-700/80 rounded-xl p-2.5 shadow-sm flex flex-col justify-between text-xs';
+    card.style.minHeight = '48mm';
+
+    // Texto del código a codificar (código oficial si tiene, o código interno)
+    const codeValue = item.codigo_oficial || item.codigo_interno;
+
+    // Encabezado compacto con Halcón
+    let html = `
+      <div class="flex items-center justify-between border-b border-emerald-800/30 pb-1 mb-1">
+        <div class="flex items-center gap-1.5">
+          <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón" class="h-6 w-auto object-contain">
+          <div>
+            <div class="text-[8px] font-black uppercase text-emerald-950 tracking-tight leading-none">COBACH PLANTEL 3</div>
+            <div class="text-[7px] font-bold text-emerald-700 uppercase tracking-wider leading-none mt-0.5">Control de Inventario</div>
+          </div>
+        </div>
+        <div class="text-[8px] font-mono font-bold text-slate-500 uppercase">${item.origen}</div>
+      </div>
+    `;
+
+    // Cuerpo del código (Barras, QR o Ambos)
+    html += `<div class="flex items-center justify-center my-0.5 w-full">`;
+    if (codeType === 'barcode') {
+      html += `<svg id="barcode-svg-${idx}" class="w-full max-h-[32px]"></svg>`;
+    } else if (codeType === 'qr') {
+      html += `
+        <div class="flex items-center justify-center gap-3">
+          <div id="qr-div-${idx}"></div>
+          <div class="text-left">
+            <div class="font-mono font-black text-sm text-slate-900">${item.codigo_interno}</div>
+            ${item.codigo_oficial ? `<div class="text-[10px] font-bold text-emerald-700">OFICIAL: #${item.codigo_oficial}</div>` : '<div class="text-[9px] font-semibold text-amber-600">Etiqueta Provisional</div>'}
+          </div>
+        </div>
+      `;
+    } else { // both
+      html += `
+        <div class="flex items-center justify-between w-full gap-2">
+          <div class="flex-1 overflow-hidden">
+            <svg id="barcode-svg-${idx}" class="w-full max-h-[26px]"></svg>
+          </div>
+          <div id="qr-div-${idx}" class="flex-shrink-0"></div>
+        </div>
+      `;
+    }
+    html += `</div>`;
+
+    // Pie de la etiqueta con descripción, serie y aula
+    html += `
+      <div class="border-t border-slate-200 pt-1 mt-1 text-[9px] leading-tight text-slate-700">
+        <div class="font-bold text-slate-900 truncate uppercase">${escapeHtml(item.descripcion)}</div>
+        <div class="flex items-center justify-between text-slate-500 text-[8px] mt-0.5">
+          <span class="font-mono">${item.numero_serie ? `SERIE: ${escapeHtml(item.numero_serie)}` : 'S/N'}</span>
+          <span class="font-semibold text-emerald-900">${item.ubicacion ? escapeHtml(item.ubicacion) : 'PLANTEL 3'}</span>
+        </div>
+      </div>
+    `;
+
+    card.innerHTML = html;
+    container.appendChild(card);
+
+    // Renderizar código de barras si aplica
+    if (codeType === 'barcode' || codeType === 'both') {
+      try {
+        JsBarcode(`#barcode-svg-${idx}`, codeValue, {
+          format: "CODE128",
+          width: 1.4,
+          height: 28,
+          displayValue: true,
+          fontSize: 10,
+          font: "monospace",
+          textMargin: 1,
+          margin: 0
+        });
+      } catch (e) {
+        console.error('Error generando código de barras:', e);
+      }
+    }
+
+    // Renderizar código QR si aplica
+    if (codeType === 'qr' || codeType === 'both') {
+      try {
+        const qrSize = codeType === 'both' ? 38 : 56;
+        new QRCode(document.getElementById(`qr-div-${idx}`), {
+          text: `COBACH-PL3:${item.codigo_interno}${item.codigo_oficial ? `:${item.codigo_oficial}` : ''}`,
+          width: qrSize,
+          height: qrSize,
+          colorDark: '#064e3b',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch (e) {
+        console.error('Error generando QR:', e);
+      }
+    }
+  });
 }
 
 // Toast

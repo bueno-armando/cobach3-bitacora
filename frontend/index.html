@@ -25,13 +25,14 @@
     }
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <!-- QRCode.js para generación de códigos QR en las etiquetas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Librerías locales para funcionamiento offline -->
+  <script src="/assets/JsBarcode.all.min.js"></script>
+  <script src="/assets/qrcode.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; }
     
-    /* Encabezado 100% opaco para evitar que el contenido se trasluzca al hacer scroll */
+    /* Encabezado 100% opaco para evitar traslapes visuales */
     .header-solid {
       background-color: #064e3b !important;
       opacity: 1 !important;
@@ -42,24 +43,51 @@
     .badge-central { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .badge-auditorio { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 
-    /* Estilos específicos para impresión de etiquetas */
+    /* Estilos de Impresión de Hoja de Etiquetas (10 por hoja Carta: 2 columnas x 5 filas) */
     @media print {
+      @page {
+        size: letter portrait;
+        margin: 10mm 8mm;
+      }
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
       body * {
         visibility: hidden;
       }
-      #print-ticket-area, #print-ticket-area * {
+      #print-sheet-modal, #print-sheet-area, #print-sheet-area * {
         visibility: visible;
       }
-      #print-ticket-area {
+      #print-sheet-modal {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      #print-sheet-area {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        grid-auto-rows: 48mm !important;
+        gap: 4mm 6mm !important;
+        width: 100% !important;
+      }
+      .label-card {
+        border: 1.5px solid #166534 !important;
+        border-radius: 6px !important;
+        padding: 2.5mm 3.5mm !important;
         display: flex !important;
-        justify-content: center;
-        align-items: center;
-        padding: 0;
-        margin: 0;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        height: 48mm !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        box-sizing: border-box !important;
+        background: white !important;
       }
       .no-print {
         display: none !important;
@@ -262,6 +290,9 @@
         <table class="w-full text-left text-xs sm:text-sm">
           <thead class="bg-slate-100 text-slate-600 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
             <tr>
+              <th scope="col" class="py-3 px-3 text-center w-10">
+                <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" title="Seleccionar todos en esta página" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+              </th>
               <th scope="col" class="py-3 px-4">Código Interno</th>
               <th scope="col" class="py-3 px-4">Etiqueta Verde</th>
               <th scope="col" class="py-3 px-4">Descripción & Marca</th>
@@ -300,6 +331,21 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- BARRA FLOTANTE DE ACCIONES POR LOTE (IMPRESIÓN EN HOJA) -->
+    <div id="bulk-actions-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 hidden border border-slate-700 animate-in slide-in-from-bottom">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xs font-semibold"><span id="selected-count-badge" class="text-emerald-300 font-bold">0</span> activos seleccionados</span>
+      </div>
+      <div class="h-4 w-[1px] bg-slate-700"></div>
+      <button onclick="openBulkPrintModal()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5">
+        <i class="fa-solid fa-print"></i> Imprimir Hoja de Etiquetas (10 por hoja)
+      </button>
+      <button onclick="clearSelection()" class="text-slate-400 hover:text-white text-xs transition">
+        <i class="fa-solid fa-xmark mr-1"></i> Desmarcar
+      </button>
     </div>
 
   </main>
@@ -523,49 +569,61 @@
     </div>
   </div>
 
-  <!-- MODAL: VISTA DE IMPRESIÓN DE ETIQUETA LOCAL -->
-  <div id="modal-print" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 p-6 animate-in fade-in zoom-in duration-150">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 no-print">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-print text-emerald-700 text-lg"></i>
-          <h3 class="text-sm font-bold text-slate-800">Impresión de Etiqueta del Plantel</h3>
+  <!-- MODAL: VISTA DE IMPRESIÓN DE HOJA DE ETIQUETAS (10 POR HOJA CARTA) -->
+  <div id="modal-print" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[94vh] overflow-y-auto border border-slate-200 p-4 sm:p-6 animate-in fade-in zoom-in duration-150">
+      
+      <!-- Controles Superiores (no se imprimen) -->
+      <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 mb-4 gap-3 no-print">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base">
+            <i class="fa-solid fa-print"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Hoja de Etiquetas de Inventario</h3>
+            <p class="text-[11px] text-slate-500">Plantilla tamaño Carta optimizada (10 etiquetas por hoja · 2 x 5)</p>
+          </div>
         </div>
-        <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+
+        <!-- Selector de tipo de código (Barras / QR / Ambos) -->
+        <div class="flex items-center gap-2">
+          <label for="print-code-type" class="text-xs font-semibold text-slate-600">Tipo de Código:</label>
+          <select id="print-code-type" onchange="regeneratePrintLabels()" class="bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
+            <option value="barcode" selected>📊 Código de Barras (Code 128)</option>
+            <option value="qr">📱 Código QR</option>
+            <option value="both">⚡ Ambos (Barras + QR)</option>
+          </select>
+        </div>
+
+        <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <!-- ÁREA DE ETIQUETA ADHESIVA IMPRIMIBLE -->
-      <div id="print-ticket-area" class="border-2 border-dashed border-emerald-700 rounded-2xl p-4 bg-white shadow-inner flex flex-col items-center text-center">
-        <div class="flex items-center justify-center gap-3 w-full border-b border-emerald-800/20 pb-2 mb-3">
-          <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-10 w-auto object-contain">
-          <div>
-            <div class="text-[9px] font-extrabold text-emerald-950 uppercase tracking-wider leading-tight">Colegio de Bachilleres del Estado de Chihuahua</div>
-            <div class="text-[11px] font-black text-emerald-800 uppercase tracking-widest leading-tight">Plantel 3 — Control de Activos</div>
-          </div>
-        </div>
+      <!-- Resumen de etiquetas a imprimir -->
+      <div class="bg-emerald-50 border border-emerald-200/80 rounded-xl px-3.5 py-2 mb-4 flex items-center justify-between text-xs text-emerald-900 no-print">
+        <span><i class="fa-solid fa-tags mr-1 text-emerald-700"></i> Mostrando <strong id="print-sheet-count">0</strong> etiqueta(s) a imprimir.</span>
+        <span class="text-[11px] text-emerald-700 font-medium"><i class="fa-solid fa-file-lines mr-1"></i> Aprox. <span id="print-pages-count">1</span> página(s) tamaño Carta</span>
+      </div>
 
-        <div id="ticket-qr" class="my-1 flex justify-center"></div>
+      <!-- ÁREA DE HOJA DE ETIQUETAS IMPRIMIBLE (CUADRÍCULA 2 x 5) -->
+      <div id="print-sheet-area" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-1 bg-slate-50 sm:bg-white rounded-xl">
+        <!-- Generado dinámicamente -->
+      </div>
 
-        <div class="mt-2 text-center w-full">
-          <div id="ticket-codigo" class="font-mono font-black text-xl text-slate-900 tracking-wider">PL3-GTO-0001</div>
-          <div id="ticket-tag-oficial" class="text-xs font-bold text-emerald-800 mt-0.5"></div>
-          <div id="ticket-desc" class="font-bold text-xs text-slate-800 mt-1 uppercase">IMPRESORA LASERJET HP</div>
-          <div id="ticket-serie" class="font-mono text-[10px] text-slate-600">SERIE: VND3S78861</div>
-          <div id="ticket-ubi" class="text-[10px] text-slate-600 font-semibold mt-1">UBICACIÓN: CONTROL ESCOLAR</div>
+      <!-- Botones de Acción (no se imprimen) -->
+      <div class="flex items-center justify-between border-t border-slate-200 pt-4 mt-4 no-print">
+        <span class="text-[11px] text-slate-400">💡 Al imprimir, asegúrate de desmarcar "Encabezados y pies de página" en el diálogo del navegador.</span>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closePrintModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+            Cerrar
+          </button>
+          <button type="button" onclick="window.print()" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-print"></i> Imprimir Hoja(s)
+          </button>
         </div>
       </div>
 
-      <!-- Botones de Control Modal -->
-      <div class="flex items-center justify-end gap-2 mt-5 no-print">
-        <button type="button" onclick="closePrintModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
-          Cerrar
-        </button>
-        <button type="button" onclick="window.print()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5">
-          <i class="fa-solid fa-print"></i> Imprimir Etiqueta
-        </button>
-      </div>
     </div>
   </div>
 

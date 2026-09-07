@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario de Activos | COBACH Plantel 3</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cobach: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .badge-gasto { background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-ca { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+    .badge-central { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-auditorio { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- ENCABEZADO INSTITUCIONAL -->
+  <header class="bg-gradient-to-r from-emerald-800 via-emerald-700 to-green-800 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3.5">
+        <div class="bg-white text-emerald-800 rounded-xl p-2.5 shadow-md flex items-center justify-center">
+          <i class="fa-solid fa-boxes-stacked text-2xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider bg-emerald-900/60 px-2 py-0.5 rounded text-emerald-200">Plantel 3</span>
+            <span class="text-xs text-emerald-200">Chihuahua, Chih.</span>
+          </div>
+          <h1 class="text-xl font-bold tracking-tight">Sistema de Consulta y Control de Inventario</h1>
+          <p class="text-xs text-emerald-100 hidden sm:block">Colegio de Bachilleres del Estado de Chihuahua</p>
+        </div>
+      </div>
+
+      <!-- Quick KPI Stats in Header -->
+      <div class="flex items-center gap-2 sm:gap-4 text-xs font-medium">
+        <div class="bg-emerald-900/40 border border-emerald-600/50 rounded-lg px-3 py-1.5 text-center">
+          <span class="text-emerald-200 block text-[10px] uppercase">Total Activos</span>
+          <span id="stat-total" class="text-base font-bold text-white">-</span>
+        </div>
+        <div class="bg-emerald-900/40 border border-emerald-600/50 rounded-lg px-3 py-1.5 text-center">
+          <span class="text-emerald-200 block text-[10px] uppercase">Oficiales</span>
+          <span id="stat-oficial" class="text-base font-bold text-emerald-300">-</span>
+        </div>
+        <div class="bg-amber-950/40 border border-amber-600/50 rounded-lg px-3 py-1.5 text-center">
+          <span class="text-amber-200 block text-[10px] uppercase">Pendientes Etiqueta</span>
+          <span id="stat-pendientes" class="text-base font-bold text-amber-300">-</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, C.A., INVENTARIO GENERAL) -->
+    <nav class="bg-emerald-900/60 border-t border-emerald-700/50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-2 py-2">
+        <button onclick="setTab('')" id="tab-all" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap bg-white text-emerald-900 shadow">
+          <i class="fa-solid fa-layer-group mr-1.5"></i> Todos los Activos
+        </button>
+        <button onclick="setTab('GASTO')" id="tab-gasto" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-receipt mr-1.5"></i> GASTO (GTO)
+        </button>
+        <button onclick="setTab('C.A.')" id="tab-ca" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-users-gear mr-1.5"></i> C.A.
+        </button>
+        <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-tags mr-1.5 text-amber-400"></i> Pendientes de Etiqueta Verde
+        </button>
+        <button onclick="setTab('CENTRAL')" id="tab-central" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
+          <i class="fa-solid fa-building-columns mr-1.5"></i> Oficina Central
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
+
+    <!-- SECCIÓN DE BÚSQUEDA Y FILTROS -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-5 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+        
+        <!-- Campo ACTIVO / CÓDIGO (Solicitado explícitamente por el encargado) -->
+        <div class="md:col-span-5">
+          <label for="search-input" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+            <i class="fa-solid fa-barcode text-emerald-600 mr-1"></i> Buscar por Activo / Código / Serie
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="Ej. 242, VND3S78861, Impresora, PL3-GTO-0001..." 
+              class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+              onkeydown="if(event.key==='Enter') applyFilters()"
+            >
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </div>
+            <button 
+              id="clear-search-btn" 
+              onclick="clearSearchInput()" 
+              class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+            >
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Campo UBICACIÓN (Solicitado explícitamente por el encargado) -->
+        <div class="md:col-span-3">
+          <label for="filter-ubicacion" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+            <i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i> Ubicación Física
+          </label>
+          <select 
+            id="filter-ubicacion" 
+            onchange="applyFilters()" 
+            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+          >
+            <option value="">Todas las ubicaciones</option>
+          </select>
+        </div>
+
+        <!-- Filtro CATEGORÍA -->
+        <div class="md:col-span-3">
+          <label for="filter-categoria" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+            <i class="fa-solid fa-folder-tree text-emerald-600 mr-1"></i> Categoría
+          </label>
+          <select 
+            id="filter-categoria" 
+            onchange="applyFilters()" 
+            class="w-full py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+          >
+            <option value="">Todas las categorías</option>
+          </select>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="md:col-span-1 flex items-center gap-2">
+          <button 
+            onclick="applyFilters()" 
+            title="Buscar" 
+            class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium text-sm transition shadow-sm flex items-center justify-center"
+          >
+            <i class="fa-solid fa-filter"></i>
+          </button>
+          <button 
+            onclick="resetAllFilters()" 
+            title="Reiniciar filtros" 
+            class="py-2.5 px-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-medium text-sm transition shadow-sm"
+          >
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Barra de Estado de Filtro y Contador -->
+      <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 gap-2">
+        <div class="flex items-center gap-2">
+          <span id="results-count" class="font-semibold text-slate-700">Cargando activos...</span>
+          <span id="active-filter-badge" class="hidden px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-medium"></span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label for="limit-select" class="text-slate-500">Mostrar:</label>
+          <select id="limit-select" onchange="changeLimit()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLA DE ACTIVOS -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-100/80 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+            <tr>
+              <th scope="col" class="py-3.5 px-4">Código Interno</th>
+              <th scope="col" class="py-3.5 px-4">Etiqueta Verde</th>
+              <th scope="col" class="py-3.5 px-4">Descripción & Marca</th>
+              <th scope="col" class="py-3.5 px-4">Número de Serie</th>
+              <th scope="col" class="py-3.5 px-4">Ubicación Física</th>
+              <th scope="col" class="py-3.5 px-4">Origen</th>
+              <th scope="col" class="py-3.5 px-4 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="activos-table-body" class="divide-y divide-slate-100">
+            <!-- Filas dinámicas generadas por JavaScript -->
+            <tr>
+              <td colspan="7" class="py-12 text-center text-slate-400">
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-600"></i>
+                <p>Cargando información del inventario...</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINACIÓN -->
+      <div class="p-4 bg-slate-50/70 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div class="text-xs text-slate-500">
+          Página <span id="current-page" class="font-bold text-slate-700">1</span> de <span id="total-pages" class="font-bold text-slate-700">1</span>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <button 
+            id="btn-prev" 
+            onclick="prevPage()" 
+            class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition"
+          >
+            <i class="fa-solid fa-chevron-left mr-1"></i> Anterior
+          </button>
+          <button 
+            id="btn-next" 
+            onclick="nextPage()" 
+            class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition"
+          >
+            Siguiente <i class="fa-solid fa-chevron-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: DETALLE COMPLETO DEL ACTIVO -->
+  <div id="modal-detail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-100 animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0 z-10">
+        <div>
+          <span id="modal-detail-badge" class="text-xs font-bold px-2 py-0.5 rounded-md"></span>
+          <h3 id="modal-detail-title" class="text-lg font-bold text-slate-800 mt-1">Detalle del Activo</h3>
+        </div>
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-2 text-lg">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4 text-sm" id="modal-detail-content">
+        <!-- Rellenado dinámico -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex justify-end">
+        <button onclick="closeDetailModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl text-xs transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ASIGNAR ETIQUETA VERDE OFICIAL -->
+  <div id="modal-tag" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 p-6 animate-in fade-in zoom-in duration-150">
+      
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold">
+          <i class="fa-solid fa-tag"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-800">Registrar Etiqueta Verde</h3>
+          <p class="text-xs text-slate-500">Conciliación con Bienes Patrimoniales</p>
+        </div>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-200/80 rounded-xl p-3 text-xs text-amber-900 mb-4">
+        <p class="font-semibold" id="modal-tag-desc">Activo a etiquetar</p>
+        <p class="text-[11px] text-amber-700 mt-0.5" id="modal-tag-meta">Código Interno: -</p>
+      </div>
+
+      <form id="form-tag" onsubmit="submitTag(event)" class="space-y-4">
+        <input type="hidden" id="tag-activo-id">
+        <div>
+          <label for="input-codigo-oficial" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            Número de Etiqueta Verde (Código Oficial) *
+          </label>
+          <input 
+            type="text" 
+            id="input-codigo-oficial" 
+            required 
+            placeholder="Ej. 41205" 
+            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold text-emerald-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">El número impreso en el sticker verde colocado físicamente en el activo.</p>
+        </div>
+
+        <div>
+          <label for="input-tag-responsable" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            Registrado por
+          </label>
+          <input 
+            type="text" 
+            id="input-tag-responsable" 
+            value="Encargado de Informática Plantel 3" 
+            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          >
+        </div>
+
+        <div>
+          <label for="input-tag-notas" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+            Observaciones / Notas (Opcional)
+          </label>
+          <textarea 
+            id="input-tag-notas" 
+            rows="2" 
+            placeholder="Ej. Etiqueta colocada durante revisión semestral de Bienes Patrimoniales." 
+            class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+          ></textarea>
+        </div>
+
+        <div id="tag-error" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button 
+            type="button" 
+            onclick="closeTagModal()" 
+            class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="btn-submit-tag" 
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium transition shadow-sm flex items-center"
+          >
+            <i class="fa-solid fa-check mr-1.5"></i> Guardar Etiqueta
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-xs font-medium translate-y-20 opacity-0 transition-all duration-300">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toast-msg">Mensaje de notificación</span>
+  </div>
+
+  <!-- JAVASCRIPT DEL CLIENTE -->
+  <script src="/app.js"></script>
+</body>
+</html>

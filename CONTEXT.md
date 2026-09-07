@@ -144,7 +144,7 @@ Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9
     * Modal `Editar Activo`.
     * Modal `Eliminar Activo` con confirmación.
     * Modal `Detalle del Activo`.
-    * Modal `Imprimir Etiquetas`: Genera hojas de 10 etiquetas por hoja Carta (cuadrícula 2x5, estándar 48 mm de alto) con selección múltiple de activos. Diseño con Mascota Halcón y Código (Barras Code 128 / QR / Ambos) lado a lado a la misma altura (~31mm) ocupando la mayor parte de la etiqueta, con información de activo (descripción, serie, aula y origen) en la base. Optimizado para impresión sin hojas en blanco ni dependencias de internet.
+    * Modal `Imprimir Etiquetas & Cola de Impresión`: Sistema híbrido que combina selección en tabla (con botón para seleccionar todo el filtro actual de hasta 2,500 ítems) y una Cola de Impresión persistente en `localStorage`. Genera hojas de 10 etiquetas por hoja Carta (cuadrícula 2x5, estándar 48 mm de alto) tanto para hojas normales de papel bond (con guías de corte sólidas o punteadas para tijera/guillotina) como para planillas autoadhesivas precortadas (Avery 5163 / Janel). Diseño maximizado con Mascota Halcón y Código lado a lado a ~35mm de altura (80% del área útil) e información en la base. 100% offline.
 
 ---
 

@@ -179,8 +179,8 @@
       
       <!-- Logo y Título -->
       <div class="flex items-center space-x-2.5">
-        <div class="bg-white rounded-lg p-1 shadow-xs flex items-center justify-center h-9 w-9 flex-shrink-0">
-          <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
+        <div class="bg-white rounded-xl p-1 shadow-sm flex items-center justify-center h-9 w-9 flex-shrink-0 border border-emerald-600/30 ring-1 ring-emerald-500/20">
+          <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
         </div>
         <div class="flex items-center gap-2">
           <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Inventario COBACH Plantel 3</h1>
@@ -231,23 +231,23 @@
 
     </div>
 
-    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, C.A., INVENTARIO GENERAL) -->
+    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, CONTROL ADMINISTRATIVO, DIRECCIÓN GENERAL, PENDIENTES) -->
     <nav class="bg-emerald-950/90 border-t border-emerald-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-1.5 py-1">
         <button onclick="setTab('')" id="tab-all" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap bg-white text-emerald-950 shadow-xs">
           <i class="fa-solid fa-layer-group mr-1"></i> Todos
         </button>
-        <button onclick="setTab('GASTO')" id="tab-gasto" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-receipt mr-1"></i> GASTO (GTO)
+        <button onclick="setTab('GASTO')" id="tab-gasto" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60" title="Gasto corriente del plantel ($1 a $3,000)">
+          <i class="fa-solid fa-receipt mr-1"></i> Gasto ($1 - $3,000)
         </button>
-        <button onclick="setTab('C.A.')" id="tab-ca" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-users-gear mr-1"></i> C.A.
+        <button onclick="setTab('CONTROL ADMINISTRATIVO')" id="tab-ca" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60" title="Control Administrativo - Etiqueta Genérica D.B.P ($3,001 a $7,900)">
+          <i class="fa-solid fa-users-gear mr-1"></i> Control Admin ($3,001 - $7,900)
         </button>
-        <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60">
+        <button onclick="setTab('DIRECCION GENERAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60" title="Dirección General - Etiqueta Verde Oficial ($7,901+)">
+          <i class="fa-solid fa-building-columns mr-1"></i> Dirección General ($7,901+)
+        </button>
+        <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60" title="Activos en espera de etiqueta verde de Bienes Patrimoniales">
           <i class="fa-solid fa-tags mr-1 text-amber-400"></i> Pendientes Etiqueta
-        </button>
-        <button onclick="setTab('CENTRAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60">
-          <i class="fa-solid fa-building-columns mr-1"></i> Oficina Central
         </button>
       </div>
     </nav>
@@ -357,14 +357,15 @@
               <th scope="col" class="py-3 px-3 text-center w-10">
                 <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" title="Seleccionar todos en esta página" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
               </th>
-              <th scope="col" class="py-3 px-4">Código Interno</th>
-              <th scope="col" class="py-3 px-4">Etiqueta Verde</th>
-              <th scope="col" class="py-3 px-4">Descripción & Marca</th>
-              <th scope="col" class="py-3 px-4">Número de Serie</th>
-              <th scope="col" class="py-3 px-4">Ubicación Física</th>
-              <th scope="col" class="py-3 px-4">Estado Físico</th>
-              <th scope="col" class="py-3 px-4">Origen</th>
-              <th scope="col" class="py-3 px-4 text-center">Acciones</th>
+              <th scope="col" class="py-3 px-2 text-center w-12">Foto</th>
+              <th scope="col" class="py-3 px-3 whitespace-nowrap">Núm. Inventario</th>
+              <th scope="col" class="py-3 px-4 min-w-[180px]">Descripción</th>
+              <th scope="col" class="py-3 px-4 min-w-[170px]">Especificación</th>
+              <th scope="col" class="py-3 px-3 whitespace-nowrap">Núm. Serie</th>
+              <th scope="col" class="py-3 px-3">Marca</th>
+              <th scope="col" class="py-3 px-3">Modelo</th>
+              <th scope="col" class="py-3 px-4 min-w-[150px]">Comentarios</th>
+              <th scope="col" class="py-3 px-3 text-center min-w-[240px]">Acciones</th>
             </tr>
           </thead>
           <tbody id="activos-table-body" class="divide-y divide-slate-100">
@@ -457,15 +458,34 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block font-semibold text-slate-700 uppercase mb-1">Origen del Activo *</label>
-            <select id="form-origen" required class="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
-              <option value="GASTO">GASTO (GTO)</option>
-              <option value="C.A.">C.A.</option>
-              <option value="CENTRAL">CENTRAL (Oficina Central)</option>
-              <option value="AUDITORIO">AUDITORIO</option>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Fuente / Origen del Activo *</label>
+            <select id="form-origen" onchange="updatePriceIndicator()" required class="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
+              <option value="GASTO">Gasto ($1 a $3,000 MXN)</option>
+              <option value="CONTROL ADMINISTRATIVO">Control Administrativo ($3,001 a $7,900 MXN)</option>
+              <option value="DIRECCION GENERAL">Dirección General ($7,901+ MXN)</option>
             </select>
           </div>
 
+          <div>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Condición Física (Escala D.G.) *</label>
+            <select id="form-condicion" required class="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
+              <option value="Excelente 81% - 100%">Excelente (81% - 100%)</option>
+              <option value="Buena 61% - 80%" selected>Buena (61% - 80%) [Predeterminada]</option>
+              <option value="Mala 41% - 60%">Mala (41% - 60%)</option>
+              <option value="Pésima 0% - 40%">Pésima (0% - 40%)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Indicador dinámico de rango de precio según la fuente -->
+        <div id="source-price-indicator" class="p-2.5 rounded-xl border bg-amber-50/70 border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+          <i class="fa-solid fa-circle-info text-amber-600 text-sm"></i>
+          <div>
+            <span class="font-bold">Gasto Corriente ($1 a $3,000 MXN):</span> Adquisición con fondos propios del plantel. Consecutivo <code class="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded">PL3-GTO-XXXX</code>.
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-semibold text-slate-700 uppercase mb-1">Estado Físico / Operativo *</label>
             <select id="form-estatus-operativo" required class="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
@@ -474,6 +494,11 @@
               <option value="EN_REPARACION">🟡 En Reparación / Mantenimiento</option>
               <option value="BAJA">⚪ Baja Oficial</option>
             </select>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Costo Estimado / Factura ($ MXN)</label>
+            <input type="number" step="0.01" id="form-costo" placeholder="Ej. 2450.00" class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-semibold">
           </div>
         </div>
 
@@ -714,7 +739,7 @@
             <label for="print-code-source" class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Dato:</label>
             <select id="print-code-source" onchange="regeneratePrintLabels()" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-emerald-500">
               <option value="interno" selected>Cód. Interno</option>
-              <option value="oficial">Cód. Oficial (Verde)</option>
+              <option value="oficial">Código</option>
               <option value="auto">Auto</option>
             </select>
           </div>
@@ -895,6 +920,95 @@
     </div>
   </div>
 
+  <!-- MODAL: VISOR DE FOTOGRAFÍA EN ALTA RESOLUCIÓN (LIGHTBOX) -->
+  <div id="modal-lightbox" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 hidden flex flex-col items-center justify-center p-4 animate-in fade-in duration-200" onclick="if(event.target===this) closeLightbox()">
+    <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+      <button onclick="closeLightbox()" class="absolute -top-10 right-0 text-white/80 hover:text-white bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 shadow-lg">
+        <i class="fa-solid fa-xmark"></i> Cerrar
+      </button>
+      <img id="lightbox-img" src="" alt="Fotografía del activo" class="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/20 bg-slate-900">
+      <div class="mt-3 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs flex items-center justify-between gap-4 max-w-full shadow-lg border border-slate-700">
+        <div>
+          <span id="lightbox-caption" class="font-bold"></span>
+          <span id="lightbox-badge" class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold"></span>
+        </div>
+        <a id="lightbox-download" href="" download class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
+          <i class="fa-solid fa-download"></i> Descargar
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBIR / ACTUALIZAR FOTO DEL ACTIVO -->
+  <div id="modal-image-upload" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-camera"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Fotografía del Activo</h3>
+            <p id="upload-modal-subtitle" class="text-[11px] text-slate-500">Asignar imagen al bien</p>
+          </div>
+        </div>
+        <button onclick="closeImageUploadModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="form-image-upload" onsubmit="submitImageUpload(event)" class="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+        <input type="hidden" id="upload-activo-id">
+
+        <!-- Zona de selección de imagen con drag & drop -->
+        <div 
+          id="dropzone" 
+          onclick="document.getElementById('input-image-file').click()"
+          class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center min-h-[160px]"
+        >
+          <input type="file" id="input-image-file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewSelectedImage(this)">
+          <div id="dropzone-empty" class="space-y-2">
+            <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <p class="font-semibold text-slate-700">Haz clic para seleccionar o arrastra una imagen</p>
+            <p class="text-[10px] text-slate-400">Formatos admitidos: JPG, PNG, WEBP (hasta 10 MB)</p>
+          </div>
+          <div id="dropzone-preview-container" class="hidden flex flex-col items-center space-y-2">
+            <img id="dropzone-preview" src="" alt="Vista previa" class="max-h-40 rounded-xl object-contain shadow border border-slate-200">
+            <span class="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-check"></i> Imagen lista para subir (clic para cambiar)
+            </span>
+          </div>
+        </div>
+
+        <!-- Opción de propagación por modelo -->
+        <div id="upload-propagate-container" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" id="check-propagate-model" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 mt-0.5">
+            <div class="text-[11px]">
+              <span class="font-bold text-slate-800">Aplicar también a los demás activos del modelo <span id="upload-model-name" class="font-mono text-emerald-800 font-black"></span></span>
+              <p class="text-[10px] text-slate-500 mt-0.5 leading-relaxed">
+                🛡️ <strong>Protección de fotos particulares:</strong> Los activos que ya tengan foto propia asignada (por ejemplo, con daños físicos o detalles específicos) <strong>NO</strong> serán sobreescritos.
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div id="upload-error" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeImageUploadModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-save-image" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold transition shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-upload"></i> Subir Foto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-xs font-medium translate-y-20 opacity-0 transition-all duration-300">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
@@ -902,6 +1016,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

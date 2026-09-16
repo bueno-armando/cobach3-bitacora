@@ -1,7 +1,7 @@
 import os
 import datetime
 from typing import Optional
-from fastapi import FastAPI, Depends, Query, status
+from fastapi import FastAPI, Depends, Query, status, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,14 +16,22 @@ from backend.schemas import (
     ActivoUpdate,
     CambiarEstatusRequest,
     AsignarEtiquetaRequest,
-    CatalogosResponse
+    CatalogosResponse,
+    ImagenUploadResponse
 )
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 app = FastAPI(
     title="Sistema de Inventario - COBACH Plantel 3",
     description="API para control, consulta y gestión del ciclo de vida de los activos del Plantel 3.",
-    version="1.1.0"
+    version="1.2.0"
 )
+
+# Servir uploads de imágenes
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Configuración de CORS
 app.add_middleware(
@@ -90,6 +98,43 @@ def change_operational_status(activo_id: int, data: CambiarEstatusRequest, db: S
 @app.post("/api/activos/{activo_id}/asignar-etiqueta", response_model=ActivoDetail, summary="Asignar código oficial de etiqueta verde")
 def asignar_etiqueta(activo_id: int, data: AsignarEtiquetaRequest, db: Session = Depends(get_db)):
     return crud.asignar_etiqueta_oficial(db=db, activo_id=activo_id, data=data)
+
+
+@app.post("/api/activos/{activo_id}/imagen", response_model=ImagenUploadResponse, summary="Subir imagen de activo con opción de propagación a modelo")
+async def upload_activo_imagen(
+    activo_id: int,
+    file: UploadFile = File(...),
+    propagate_model: bool = Form(False),
+    override_custom: bool = Form(False),
+    db: Session = Depends(get_db)
+):
+    filename = file.filename or "imagen.jpg"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        raise HTTPException(status_code=400, detail="Formato no admitido. Usa imágenes JPG, PNG o WEBP.")
+
+    timestamp = int(datetime.datetime.now().timestamp())
+    saved_filename = f"activo_{activo_id}_{timestamp}{ext}"
+    file_path = os.path.join(UPLOADS_DIR, saved_filename)
+
+    contents = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    imagen_url = f"/uploads/{saved_filename}"
+
+    return crud.set_activo_imagen(
+        db=db,
+        activo_id=activo_id,
+        imagen_url=imagen_url,
+        propagate_model=propagate_model,
+        override_custom=override_custom
+    )
+
+
+@app.delete("/api/activos/{activo_id}/imagen", summary="Eliminar imagen asignada al activo")
+def delete_activo_imagen(activo_id: int, db: Session = Depends(get_db)):
+    return crud.delete_activo_imagen(db=db, activo_id=activo_id)
 
 
 @app.get("/api/catalogos", response_model=CatalogosResponse, summary="Obtener catálogos de ubicaciones, categorías y resguardantes")

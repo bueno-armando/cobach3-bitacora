@@ -125,33 +125,35 @@ def run_migration():
     res_cache = {}
 
     total_creados = 0
-    conteo_origen = {"CENTRAL": 0, "GASTO": 0, "C.A.": 0, "AUDITORIO": 0}
+    conteo_origen = {"DIRECCION GENERAL": 0, "GASTO": 0, "CONTROL ADMINISTRATIVO": 0}
     conteo_etiqueta = {"ETIQUETADO_OFICIAL": 0, "PENDIENTE_ETIQUETA": 0}
 
     # -------------------------------------------------------------
-    # 2. Procesar Inventario_060926.xls (Oficina Central)
+    # 2. Procesar Inventario_060926.xls (Dirección General)
     # -------------------------------------------------------------
     inv_path = os.path.join(BASE_DIR, "Inventario_060926.xls")
     if os.path.exists(inv_path):
-        print(f"\n[1/4] Procesando exportación central: {os.path.basename(inv_path)}...")
+        print(f"\n[1/4] Procesando exportación de Dirección General: {os.path.basename(inv_path)}...")
         df_inv = pd.read_html(inv_path)[0]
         print(f"      Filas encontradas: {len(df_inv)}")
 
         for idx, row in df_inv.iterrows():
             cod_num = int(row["Código"])
             cod_oficial = str(cod_num)
-            cod_interno = f"PL3-CEN-{cod_num:06d}"
+            cod_interno = f"PL3-DG-{cod_num:06d}"
 
             cat_id = get_or_create(session, Categoria, cat_cache, normalize_categoria(row.get("Categoría")))
             ubi_id = get_or_create(session, Ubicacion, ubi_cache, normalize_ubicacion(row.get("Ubicación fisica")))
             res_id = get_or_create(session, Resguardante, res_cache, normalize_resguardante(row.get("Resguardante")))
 
             estatus_activo = "BAJA" if "BAJA" in str(row.get("Estatus", "")).upper() else "ACTIVO"
+            cond_dg = clean_str(row.get("Condición"))
+            cond_final = cond_dg or "Buena 61% - 80%"
 
             activo = Activo(
                 codigo_interno=cod_interno,
                 codigo_oficial=cod_oficial,
-                origen="CENTRAL",
+                origen="DIRECCION GENERAL",
                 estatus_etiqueta="ETIQUETADO_OFICIAL",
                 estatus_activo=estatus_activo,
                 descripcion=clean_str(row.get("Descripción")) or "SIN DESCRIPCIÓN",
@@ -164,7 +166,9 @@ def run_migration():
                 resguardante_id=res_id,
                 familia=clean_str(row.get("Familia")),
                 centro_costo=clean_str(row.get("Centro de costo")) or "PLANTEL 3",
-                condicion=clean_str(row.get("Condición")),
+                condicion=cond_final,
+                condicion_dg=cond_dg,
+                condicion_actual=cond_final,
                 costo=clean_float(row.get("Costo")),
                 donacion_tipo=clean_str(row.get("Donación")),
                 orden_compra=clean_str(row.get("Orden de compra")),
@@ -175,11 +179,11 @@ def run_migration():
             )
             session.add(activo)
             total_creados += 1
-            conteo_origen["CENTRAL"] += 1
+            conteo_origen["DIRECCION GENERAL"] += 1
             conteo_etiqueta["ETIQUETADO_OFICIAL"] += 1
 
         session.flush()
-        print(f"      -> {len(df_inv)} activos de Oficina Central importados.")
+        print(f"      -> {len(df_inv)} activos de Dirección General importados.")
     else:
         print(f"ADVERTENCIA: No se encontró {inv_path}")
 
@@ -213,6 +217,9 @@ def run_migration():
                 categoria_id=cat_id,
                 ubicacion_id=ubi_id,
                 resguardante_id=res_id,
+                condicion="Buena 61% - 80%",
+                condicion_dg=None,
+                condicion_actual="Buena 61% - 80%",
                 centro_costo=clean_str(row.get("Centro de Costo")) or "PLANTEL 3",
                 archivo_fuente="GTO PL 3.xlsx"
             )
@@ -227,11 +234,11 @@ def run_migration():
         print(f"ADVERTENCIA: No se encontró {gto_path}")
 
     # -------------------------------------------------------------
-    # 4. Procesar C.A. PL 3.xlsx (C.A.)
+    # 4. Procesar C.A. PL 3.xlsx (Control Administrativo)
     # -------------------------------------------------------------
     ca_path = os.path.join(BASE_DIR, "C.A. PL 3.xlsx")
     if os.path.exists(ca_path):
-        print(f"\n[3/4] Procesando archivo de C.A.: {os.path.basename(ca_path)}...")
+        print(f"\n[3/4] Procesando archivo de Control Administrativo (C.A.): {os.path.basename(ca_path)}...")
         df_ca = pd.read_excel(ca_path)
         print(f"      Filas encontradas: {len(df_ca)}")
 
@@ -245,7 +252,7 @@ def run_migration():
             activo = Activo(
                 codigo_interno=cod_interno,
                 codigo_oficial=None,  # Pendiente de etiqueta verde
-                origen="C.A.",
+                origen="CONTROL ADMINISTRATIVO",
                 estatus_etiqueta="PENDIENTE_ETIQUETA",
                 estatus_activo="ACTIVO",
                 descripcion=clean_str(row.get("Descripción")) or "SIN DESCRIPCIÓN",
@@ -256,12 +263,15 @@ def run_migration():
                 categoria_id=cat_id,
                 ubicacion_id=ubi_id,
                 resguardante_id=res_id,
+                condicion="Buena 61% - 80%",
+                condicion_dg=None,
+                condicion_actual="Buena 61% - 80%",
                 centro_costo=clean_str(row.get("Centro de Costo")) or "PLANTEL 3",
                 archivo_fuente="C.A. PL 3.xlsx"
             )
             session.add(activo)
             total_creados += 1
-            conteo_origen["C.A."] += 1
+            conteo_origen["CONTROL ADMINISTRATIVO"] += 1
             conteo_etiqueta["PENDIENTE_ETIQUETA"] += 1
 
         session.flush()
@@ -270,11 +280,11 @@ def run_migration():
         print(f"ADVERTENCIA: No se encontró {ca_path}")
 
     # -------------------------------------------------------------
-    # 5. Procesar ARCHIVO PL3 SISTEMA.xlsx (Butacas Auditorio)
+    # 5. Procesar ARCHIVO PL3 SISTEMA.xlsx (Butacas Auditorio -> Dirección General)
     # -------------------------------------------------------------
     arc_path = os.path.join(BASE_DIR, "ARCHIVO PL3 SISTEMA.xlsx")
     if os.path.exists(arc_path):
-        print(f"\n[4/4] Procesando archivo de Auditorio: {os.path.basename(arc_path)}...")
+        print(f"\n[4/4] Procesando archivo de Auditorio (Dirección General): {os.path.basename(arc_path)}...")
         df_arc = pd.read_excel(arc_path)
         print(f"      Filas encontradas: {len(df_arc)}")
 
@@ -284,27 +294,30 @@ def run_migration():
         for idx, row in df_arc.iterrows():
             cod_num = int(row["Código"])
             cod_oficial = str(cod_num)
-            cod_interno = f"PL3-AUD-{cod_num:06d}"
+            cod_interno = f"PL3-DG-{cod_num:06d}"
 
             activo = Activo(
                 codigo_interno=cod_interno,
                 codigo_oficial=cod_oficial,
-                origen="AUDITORIO",
+                origen="DIRECCION GENERAL",
                 estatus_etiqueta="ETIQUETADO_OFICIAL",
                 estatus_activo="ACTIVO",
                 descripcion=clean_str(row.get("Descripción")) or "BUTACA DE AUDITORIO",
                 categoria_id=cat_id,
                 ubicacion_id=ubi_id,
+                condicion="Buena 61% - 80%",
+                condicion_dg="Buena 61% - 80%",
+                condicion_actual="Buena 61% - 80%",
                 centro_costo="PLANTEL 3",
                 archivo_fuente="ARCHIVO PL3 SISTEMA.xlsx"
             )
             session.add(activo)
             total_creados += 1
-            conteo_origen["AUDITORIO"] += 1
+            conteo_origen["DIRECCION GENERAL"] += 1
             conteo_etiqueta["ETIQUETADO_OFICIAL"] += 1
 
         session.flush()
-        print(f"      -> {len(df_arc)} activos de Auditorio importados.")
+        print(f"      -> {len(df_arc)} activos de Auditorio importados a Dirección General.")
     else:
         print(f"ADVERTENCIA: No se encontró {arc_path}")
 

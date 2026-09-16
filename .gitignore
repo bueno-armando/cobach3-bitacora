@@ -3,6 +3,7 @@
 *.xls
 *.xlsx
 *.db
+!inventario.db
 *.sqlite3
 __pycache__/
 *.pyc
@@ -13,3 +14,5 @@ dist/
 env/
 GUIA_REUNION_SISTEMAS.md
 MANUAL_WINDOWS.md
+uploads/*
+!uploads/.gitkeep

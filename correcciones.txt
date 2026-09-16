@@ -1,0 +1,12 @@
+CORRECCIONES:
+- Dropdown para tipo de etiqueta: en vez de Cód. Oficial poner sólo "Código"
+
+FUENTES:
+- Para el excel de GTO la fuente es Gasto ($1 a $3000)
+- Para el excel de C.A la fuente es Control Administrativo ($3001 a $7900) (Etiqueta Genérica D.B.P)
+- Para el excel de la "oficina central" (como la veníamos llamando hasta el momento) la fuente es Dirección General (como la hemos de llamar de ahora en adelante) ($7901+)
+
+ADICIONES:
+- Indicadores del rango de precio (según la fuente del activo) a la hora de añadir
+- Indicador local de estado debe coincidir con el de Dirección General: sacar estado físico del excel original del campo "Condición "(nota: pueden estar desactualizados en DG, pero es importante que localmente se pueda modificar).IMPORTANTE: se debe manejar también el estado físico anterior para poder comparar los dos estados a la hora de justificar la baja del activo)
+- NUEVO CAMPO EN LA BD/TABLA/GUI (Discutir?): Imagen de cada activo Y QUE SE VEA EN LA VISTA INICIAL

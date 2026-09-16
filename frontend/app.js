@@ -93,7 +93,7 @@ async function loadActivos() {
   const tbody = document.getElementById('activos-table-body');
   tbody.innerHTML = `
     <tr>
-      <td colspan="9" class="py-12 text-center text-slate-400">
+      <td colspan="10" class="py-12 text-center text-slate-400">
         <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-emerald-600"></i>
         <p>Consultando base de datos de activos...</p>
       </td>
@@ -112,10 +112,10 @@ async function loadActivos() {
 
   if (state.tab === 'GASTO') {
     params.append('origen', 'GASTO');
-  } else if (state.tab === 'C.A.') {
-    params.append('origen', 'C.A.');
-  } else if (state.tab === 'CENTRAL') {
-    params.append('origen', 'CENTRAL');
+  } else if (state.tab === 'CONTROL ADMINISTRATIVO' || state.tab === 'C.A.') {
+    params.append('origen', 'CONTROL ADMINISTRATIVO');
+  } else if (state.tab === 'DIRECCION GENERAL' || state.tab === 'CENTRAL') {
+    params.append('origen', 'DIRECCION GENERAL');
   } else if (state.tab === 'PENDIENTES') {
     params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
   }
@@ -133,7 +133,7 @@ async function loadActivos() {
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" class="py-8 text-center text-red-500 font-medium">
+        <td colspan="10" class="py-8 text-center text-red-500 font-medium">
           <i class="fa-solid fa-circle-exclamation text-xl mb-1"></i>
           <p>Ocurrió un error al consultar los activos.</p>
         </td>
@@ -143,14 +143,14 @@ async function loadActivos() {
   }
 }
 
-// Renderizar filas de la tabla
+// Renderizar filas de la tabla con las columnas solicitadas
 function renderTable(items) {
   const tbody = document.getElementById('activos-table-body');
   
   if (!items || items.length === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" class="py-12 text-center text-slate-400">
+        <td colspan="10" class="py-12 text-center text-slate-400">
           <i class="fa-solid fa-box-open text-3xl mb-2 text-slate-300"></i>
           <p class="font-medium text-slate-600">No se encontraron activos con los filtros seleccionados.</p>
           <p class="text-xs text-slate-400 mt-1">Intenta con otro término de búsqueda o limpia los filtros.</p>
@@ -163,105 +163,176 @@ function renderTable(items) {
   tbody.innerHTML = items.map(item => {
     const isChecked = state.selectedIds.has(item.id) ? 'checked' : '';
 
-    let origenBadge = '';
-    if (item.origen === 'GASTO') {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-gasto">GASTO</span>';
-    } else if (item.origen === 'C.A.') {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-ca">C.A.</span>';
-    } else if (item.origen === 'CENTRAL') {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-central">CENTRAL</span>';
-    } else {
-      origenBadge = '<span class="px-2 py-0.5 rounded-md text-[10px] font-bold badge-auditorio">AUDITORIO</span>';
-    }
-
-    let tagBadge = '';
-    let btnAsignarTag = '';
-    if (item.estatus_etiqueta === 'ETIQUETADO_OFICIAL' && item.codigo_oficial) {
-      tagBadge = `
-        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
-          <i class="fa-solid fa-tag mr-1 text-emerald-600 text-[10px]"></i> ${item.codigo_oficial}
-        </span>
+    // Columna 2: Miniatura interactiva de foto
+    let fotoHtml = '';
+    if (item.imagen_url) {
+      const captionText = `${escapeHtml(item.descripcion)} (${item.codigo_oficial ? '#' + item.codigo_oficial : item.codigo_interno})`;
+      fotoHtml = `
+        <div class="relative group inline-block">
+          <img 
+            src="${item.imagen_url}" 
+            alt="Foto" 
+            onclick="openLightbox('${item.imagen_url}', '${captionText}', '${item.codigo_interno}', ${Boolean(item.es_foto_personalizada)})"
+            class="w-9 h-9 rounded-lg object-cover cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-emerald-500 transition border border-slate-200 shadow-xs bg-slate-100"
+            title="Clic para ver en tamaño completo"
+          >
+          ${item.es_foto_personalizada ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border border-white rounded-full" title="Foto particular de este activo"></span>' : ''}
+        </div>
       `;
     } else {
-      tagBadge = `
-        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-          <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-600 text-[10px]"></i> Pendiente
-        </span>
+      fotoHtml = `
+        <button 
+          onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
+          class="w-9 h-9 rounded-lg border border-dashed border-slate-300 text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition flex items-center justify-center text-xs"
+          title="Subir fotografía para este activo"
+        >
+          <i class="fa-solid fa-camera"></i>
+        </button>
+      `;
+    }
+
+    // Columna 3: Número de inventario (oficial si existe, o código interno si pendiente)
+    let invHtml = '';
+    let btnAsignarTag = '';
+    if (item.estatus_etiqueta === 'ETIQUETADO_OFICIAL' && item.codigo_oficial) {
+      invHtml = `
+        <div class="space-y-0.5">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" title="Código Oficial (Etiqueta Verde)">
+            <i class="fa-solid fa-tag mr-1 text-emerald-600 text-[9px]"></i> #${item.codigo_oficial}
+          </span>
+          <div class="text-[10px] font-mono text-slate-400">${item.codigo_interno}</div>
+        </div>
+      `;
+    } else {
+      invHtml = `
+        <div class="space-y-0.5">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-amber-100 text-amber-900 border border-amber-300" title="Código Interno provisional">
+            ${item.codigo_interno}
+          </span>
+          <div class="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
+            <i class="fa-solid fa-clock text-[9px]"></i> Pendiente
+          </div>
+        </div>
       `;
       btnAsignarTag = `
         <button 
           onclick="openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')"
           title="Registrar Etiqueta Verde Oficial" 
-          class="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition"
+          class="btn-pop-sm w-8 h-8 rounded-xl text-amber-800 bg-amber-100 hover:bg-amber-200 hover:text-amber-950 border border-amber-300 flex items-center justify-center transition text-sm shadow-xs"
         >
           <i class="fa-solid fa-tag"></i>
         </button>
       `;
     }
 
-    let estatusFisicoBadge = '';
-    if (item.estatus_activo === 'OPERATIVO') {
-      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Operativo</span>';
-    } else if (item.estatus_activo === 'EN_DESUSO') {
-      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> En Desuso</span>';
-    } else if (item.estatus_activo === 'EN_REPARACION') {
-      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Reparación</span>';
+    // Badge sutil de origen / ubicación
+    let origenPill = '';
+    if (item.origen === 'GASTO') {
+      origenPill = '<span class="text-amber-700 font-bold">Gasto</span>';
+    } else if (item.origen === 'CONTROL ADMINISTRATIVO') {
+      origenPill = '<span class="text-blue-700 font-bold">C.A.</span>';
     } else {
-      estatusFisicoBadge = '<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">Baja Oficial</span>';
+      origenPill = '<span class="text-emerald-700 font-bold">D.G.</span>';
     }
 
     return `
-      <tr class="hover:bg-slate-50 transition">
+      <tr class="hover:bg-slate-50 transition text-xs">
+        <!-- 1. Checkbox Selección -->
         <td class="py-3 px-3 text-center">
           <input type="checkbox" class="row-checkbox rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" data-id="${item.id}" ${isChecked} onchange="toggleRowSelection(${item.id}, this)">
         </td>
-        <td class="py-3 px-4 font-mono font-bold text-slate-800 text-xs">${item.codigo_interno}</td>
-        <td class="py-3 px-4">${tagBadge}</td>
+
+        <!-- 2. Foto -->
+        <td class="py-2.5 px-2 text-center">
+          ${fotoHtml}
+        </td>
+
+        <!-- 3. Número de Inventario -->
+        <td class="py-3 px-3 whitespace-nowrap">
+          ${invHtml}
+        </td>
+
+        <!-- 4. Descripción -->
         <td class="py-3 px-4">
-          <div class="font-bold text-slate-800">${escapeHtml(item.descripcion)}</div>
-          <div class="text-[11px] text-slate-500">
-            ${item.marca ? `<span class="font-medium text-slate-600">${escapeHtml(item.marca)}</span>` : ''}
-            ${item.modelo ? `<span class="text-slate-400">· ${escapeHtml(item.modelo)}</span>` : ''}
+          <div class="font-bold text-slate-800 leading-snug">${escapeHtml(item.descripcion)}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+            ${origenPill}
+            ${item.ubicacion ? `<span class="text-slate-400">· <i class="fa-solid fa-location-dot text-[9px]"></i> ${escapeHtml(item.ubicacion)}</span>` : ''}
           </div>
         </td>
-        <td class="py-3 px-4 text-xs font-mono text-slate-600">
-          ${item.numero_serie ? escapeHtml(item.numero_serie) : '<span class="text-slate-300 italic">S/N</span>'}
+
+        <!-- 5. Especificación -->
+        <td class="py-3 px-4">
+          ${item.especificacion ? `
+            <div class="text-slate-600 max-w-[200px] truncate leading-tight" title="${escapeHtml(item.especificacion)}">
+              ${escapeHtml(item.especificacion)}
+            </div>
+          ` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
         </td>
-        <td class="py-3 px-4 text-xs text-slate-600">
-          <div class="flex items-center gap-1.5">
-            <i class="fa-solid fa-location-dot text-slate-400 text-[10px]"></i>
-            <span class="font-medium">${item.ubicacion ? escapeHtml(item.ubicacion) : 'No asignada'}</span>
-          </div>
+
+        <!-- 6. Número de Serie -->
+        <td class="py-3 px-3 font-mono whitespace-nowrap">
+          ${item.numero_serie ? `
+            <span class="text-slate-700 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200" title="${escapeHtml(item.numero_serie)}">
+              ${escapeHtml(item.numero_serie)}
+            </span>
+          ` : '<span class="text-slate-300 italic text-[11px]">S/N</span>'}
         </td>
-        <td class="py-3 px-4">${estatusFisicoBadge}</td>
-        <td class="py-3 px-4">${origenBadge}</td>
-        <td class="py-3 px-4 text-center">
-          <div class="flex items-center justify-center space-x-1">
+
+        <!-- 7. Marca -->
+        <td class="py-3 px-3">
+          ${item.marca ? `<span class="font-semibold text-slate-700">${escapeHtml(item.marca)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+        </td>
+
+        <!-- 8. Modelo -->
+        <td class="py-3 px-3">
+          ${item.modelo ? `<span class="text-slate-600 font-medium">${escapeHtml(item.modelo)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+        </td>
+
+        <!-- 9. Comentarios (Observaciones) -->
+        <td class="py-3 px-4">
+          ${item.observaciones ? `
+            <div class="text-slate-500 italic max-w-[170px] truncate text-[11px] leading-tight" title="${escapeHtml(item.observaciones)}">
+              "${escapeHtml(item.observaciones)}"
+            </div>
+          ` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+        </td>
+
+        <!-- 10. Acciones -->
+        <td class="py-3 px-3 text-center whitespace-nowrap">
+          <div class="flex items-center justify-center gap-1.5">
             <button 
               onclick="openDetailModal(${item.id})"
               title="Ver detalle completo"
-              class="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+              class="btn-pop-sm w-8 h-8 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/80 flex items-center justify-center transition text-sm shadow-xs"
             >
               <i class="fa-solid fa-circle-info"></i>
             </button>
             <button 
               onclick="openEditModal(${item.id})"
-              title="Editar datos del activo"
-              class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              title="Editar activo"
+              class="btn-pop-sm w-8 h-8 rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-sm shadow-xs"
             >
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <button 
+              onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
+              title="Subir o cambiar fotografía"
+              class="btn-pop-sm w-8 h-8 rounded-xl text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900 border border-purple-200/80 flex items-center justify-center transition text-sm shadow-xs"
+            >
+              <i class="fa-solid fa-camera"></i>
+            </button>
+            <button 
               onclick="addSingleToQueue(${item.id})"
               title="Agregar a Cola de Impresión"
-              class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              class="btn-pop-sm w-8 h-8 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 flex items-center justify-center transition text-sm shadow-xs"
             >
               <i class="fa-solid fa-folder-plus"></i>
             </button>
             <button 
               onclick="openPrintSingle(${item.id})"
               title="Imprimir Etiqueta"
-              class="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition"
+              class="btn-pop-sm w-8 h-8 rounded-xl text-slate-800 bg-slate-100 hover:bg-slate-200 hover:text-slate-950 border border-slate-300 flex items-center justify-center transition text-sm shadow-xs"
             >
               <i class="fa-solid fa-print"></i>
             </button>
@@ -269,7 +340,7 @@ function renderTable(items) {
             <button 
               onclick="openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')"
               title="Eliminar activo"
-              class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+              class="btn-pop-sm w-8 h-8 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200/80 flex items-center justify-center transition text-sm shadow-xs"
             >
               <i class="fa-solid fa-trash"></i>
             </button>
@@ -371,8 +442,9 @@ function setTab(tabName) {
 
   const activeId = tabName === '' ? 'tab-all' :
                    tabName === 'GASTO' ? 'tab-gasto' :
-                   tabName === 'C.A.' ? 'tab-ca' :
-                   tabName === 'PENDIENTES' ? 'tab-pendientes' : 'tab-central';
+                   (tabName === 'CONTROL ADMINISTRATIVO' || tabName === 'C.A.') ? 'tab-ca' :
+                   (tabName === 'DIRECCION GENERAL' || tabName === 'CENTRAL') ? 'tab-central' :
+                   tabName === 'PENDIENTES' ? 'tab-pendientes' : 'tab-all';
 
   const activeBtn = document.getElementById(activeId);
   if (activeBtn) {
@@ -449,13 +521,54 @@ function nextPage() {
 // -------------------------------------------------------------
 // MODAL CRUD: REGISTRAR / EDITAR ACTIVO
 // -------------------------------------------------------------
+function updatePriceIndicator() {
+  const origen = document.getElementById('form-origen').value;
+  const ind = document.getElementById('source-price-indicator');
+  if (!ind) return;
+
+  if (origen === 'GASTO') {
+    ind.className = 'p-2.5 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 text-xs flex items-center gap-2';
+    ind.innerHTML = `
+      <i class="fa-solid fa-receipt text-amber-600 text-sm flex-shrink-0"></i>
+      <div>
+        <span class="font-bold">Gasto Corriente ($1 a $3,000 MXN):</span> Fondos propios del plantel. Consecutivo automático <code class="font-mono font-bold bg-amber-100 px-1 py-0.5 rounded">PL3-GTO-XXXX</code>.
+      </div>
+    `;
+  } else if (origen === 'CONTROL ADMINISTRATIVO') {
+    ind.className = 'p-2.5 rounded-xl border bg-blue-50 border-blue-200 text-blue-900 text-xs flex items-center gap-2';
+    ind.innerHTML = `
+      <i class="fa-solid fa-users-gear text-blue-600 text-sm flex-shrink-0"></i>
+      <div>
+        <span class="font-bold">Control Administrativo / C.A. ($3,001 a $7,900 MXN):</span> Etiqueta Genérica D.B.P. Consecutivo <code class="font-mono font-bold bg-blue-100 px-1 py-0.5 rounded">PL3-CA-XXXX</code>.
+      </div>
+    `;
+  } else {
+    ind.className = 'p-2.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-xs flex items-center gap-2';
+    ind.innerHTML = `
+      <i class="fa-solid fa-building-columns text-emerald-700 text-sm flex-shrink-0"></i>
+      <div>
+        <span class="font-bold">Dirección General ($7,901+ MXN):</span> Asignado por Dirección General. Portará Etiqueta Verde Oficial con Código numérico.
+      </div>
+    `;
+  }
+}
+
 function openCreateModal() {
   document.getElementById('asset-form-id').value = '';
   document.getElementById('asset-form-title').textContent = 'Registrar Nuevo Activo';
   document.getElementById('asset-form-icon').className = 'fa-solid fa-plus-circle text-amber-400 text-lg';
   document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Registrar Activo';
   
-  document.getElementById('form-origen').value = state.tab === 'C.A.' ? 'C.A.' : 'GASTO';
+  if (state.tab === 'CONTROL ADMINISTRATIVO' || state.tab === 'C.A.') {
+    document.getElementById('form-origen').value = 'CONTROL ADMINISTRATIVO';
+  } else if (state.tab === 'DIRECCION GENERAL' || state.tab === 'CENTRAL') {
+    document.getElementById('form-origen').value = 'DIRECCION GENERAL';
+  } else {
+    document.getElementById('form-origen').value = 'GASTO';
+  }
+
+  document.getElementById('form-condicion').value = 'Buena 61% - 80%';
+  document.getElementById('form-costo').value = '';
   document.getElementById('form-estatus-operativo').value = 'OPERATIVO';
   document.getElementById('form-codigo-interno').value = '';
   document.getElementById('form-codigo-oficial').value = '';
@@ -470,6 +583,7 @@ function openCreateModal() {
   document.getElementById('form-observaciones').value = '';
   document.getElementById('asset-form-error').classList.add('hidden');
 
+  updatePriceIndicator();
   document.getElementById('modal-asset-form').classList.remove('hidden');
 }
 
@@ -485,6 +599,8 @@ async function openEditModal(id) {
     document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios';
 
     document.getElementById('form-origen').value = a.origen;
+    document.getElementById('form-condicion').value = a.condicion_actual || a.condicion || 'Buena 61% - 80%';
+    document.getElementById('form-costo').value = a.costo !== null && a.costo !== undefined ? a.costo : '';
     document.getElementById('form-estatus-operativo').value = a.estatus_activo;
     document.getElementById('form-codigo-interno').value = a.codigo_interno;
     document.getElementById('form-codigo-oficial').value = a.codigo_oficial || '';
@@ -499,6 +615,7 @@ async function openEditModal(id) {
     document.getElementById('form-observaciones').value = a.observaciones || '';
     document.getElementById('asset-form-error').classList.add('hidden');
 
+    updatePriceIndicator();
     document.getElementById('modal-asset-form').classList.remove('hidden');
   } catch (err) {
     showToast(err.message, true);
@@ -514,8 +631,12 @@ async function submitAssetForm(e) {
   const id = document.getElementById('asset-form-id').value;
   const isEdit = Boolean(id);
 
+  const costoVal = document.getElementById('form-costo').value.trim();
+
   const payload = {
     origen: document.getElementById('form-origen').value,
+    condicion_actual: document.getElementById('form-condicion').value,
+    costo: costoVal ? parseFloat(costoVal) : null,
     estatus_operativo: document.getElementById('form-estatus-operativo').value,
     codigo_interno: document.getElementById('form-codigo-interno').value.trim() || null,
     codigo_oficial: document.getElementById('form-codigo-oficial').value.trim() || null,
@@ -621,8 +742,7 @@ async function openDetailModal(id) {
     badge.textContent = `${a.origen} · ${a.codigo_interno}`;
     badge.className = `text-[11px] font-bold px-2 py-0.5 rounded-md ${
       a.origen === 'GASTO' ? 'badge-gasto' :
-      a.origen === 'C.A.' ? 'badge-ca' :
-      a.origen === 'CENTRAL' ? 'badge-central' : 'badge-auditorio'
+      a.origen === 'CONTROL ADMINISTRATIVO' ? 'badge-ca' : 'badge-central'
     }`;
 
     opBadge.textContent = a.estatus_activo;
@@ -642,6 +762,86 @@ async function openDetailModal(id) {
       <button onclick="closeDetailModal(); openPrintSingle(${a.id})" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
         <i class="fa-solid fa-print"></i> Imprimir Etiqueta
       </button>
+    `;
+
+    // 1. Tarjeta de Fotografía
+    let photoBlock = '';
+    if (a.imagen_url) {
+      photoBlock = `
+        <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <img 
+            src="${a.imagen_url}" 
+            alt="Foto del activo" 
+            onclick="openLightbox('${a.imagen_url}', '${escapeHtml(a.descripcion)}', '${a.codigo_interno}', ${Boolean(a.es_foto_personalizada)})"
+            class="w-20 h-20 rounded-xl object-cover cursor-pointer hover:opacity-90 hover:scale-105 transition border border-slate-200 shadow-sm bg-white flex-shrink-0"
+            title="Clic para ver en tamaño completo"
+          >
+          <div class="flex-1 space-y-1">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-xs font-bold text-slate-800">Fotografía Asignada</span>
+              ${a.es_foto_personalizada ? 
+                '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-300"><i class="fa-solid fa-camera mr-1"></i>Foto particular / detalle físico</span>' : 
+                '<span class="bg-slate-200 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded"><i class="fa-solid fa-layer-group mr-1"></i>Foto de modelo / catálogo</span>'
+              }
+            </div>
+            <p class="text-[11px] text-slate-500">Haz clic en la imagen para ampliarla en alta resolución.</p>
+            <div class="flex items-center gap-2 pt-1">
+              <button onclick="openImageUploadModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.modelo || '')}')" class="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+                <i class="fa-solid fa-camera"></i> Cambiar Foto
+              </button>
+              <button onclick="removeActivoPhoto(${a.id})" class="px-2.5 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg text-[11px] font-medium transition flex items-center gap-1">
+                <i class="fa-solid fa-trash"></i> Quitar
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      photoBlock = `
+        <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-slate-200 text-slate-400 flex items-center justify-center text-lg">
+              <i class="fa-regular fa-image"></i>
+            </div>
+            <div>
+              <span class="text-xs font-bold text-slate-700">Sin Fotografía Registrada</span>
+              <p class="text-[11px] text-slate-400">Puedes tomar o subir una fotografía para documentar este activo o su modelo.</p>
+            </div>
+          </div>
+          <button onclick="openImageUploadModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.modelo || '')}')" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs whitespace-nowrap">
+            <i class="fa-solid fa-camera"></i> Subir Foto
+          </button>
+        </div>
+      `;
+    }
+
+    // 2. Tarjeta comparativa de Condición Física (D.G. vs Plantel 3)
+    const condDgText = a.condicion_dg || 'Sin registro en D.G.';
+    const condActText = a.condicion_actual || a.condicion || 'Buena 61% - 80%';
+    const esDeteriorado = (condDgText.includes('81%') || condDgText.includes('61%')) && (condActText.includes('41%') || condActText.includes('0%'));
+
+    const condicionCard = `
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">Condición Física y Justificación Patrimonial</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block uppercase text-[10px]">Condición Origen (Dirección General)</span>
+            <span class="font-bold text-slate-800">${condDgText}</span>
+          </div>
+          <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+            <span class="text-slate-400 block uppercase text-[10px]">Condición Actual (Plantel 3)</span>
+            <span class="font-bold text-slate-800">${condActText}</span>
+          </div>
+        </div>
+        ${esDeteriorado ? `
+          <div class="p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+            <div>
+              <strong>Deterioro documentado respecto a D.G.:</strong> El activo pasó de condición óptima a degradada. Proporciona sustento técnico oficial para la justificación del trámite de <strong>baja patrimonial</strong>.
+            </div>
+          </div>
+        ` : ''}
+      </div>
     `;
 
     let historialHtml = '';
@@ -666,13 +866,15 @@ async function openDetailModal(id) {
     }
 
     content.innerHTML = `
+      ${photoBlock}
+
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3 rounded-xl border border-slate-100">
         <div>
           <span class="text-slate-400 block uppercase tracking-wider text-[10px]">Código Interno</span>
           <span class="font-mono font-bold text-slate-800">${a.codigo_interno}</span>
         </div>
         <div>
-          <span class="text-slate-400 block uppercase tracking-wider text-[10px]">Etiqueta Verde</span>
+          <span class="text-slate-400 block uppercase tracking-wider text-[10px]">Etiqueta Verde (Código)</span>
           <span class="font-bold text-emerald-700">${a.codigo_oficial ? `#${a.codigo_oficial}` : '<span class="text-amber-600 font-normal">Sin asignar</span>'}</span>
         </div>
         <div>
@@ -692,6 +894,8 @@ async function openDetailModal(id) {
           <span class="font-mono font-semibold text-slate-700">${a.numero_serie || 'S/N'}</span>
         </div>
       </div>
+
+      ${condicionCard}
 
       <div>
         <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Especificaciones Técnicas</h4>
@@ -714,14 +918,21 @@ async function openDetailModal(id) {
           <span class="font-semibold text-slate-800">${a.categoria || 'Sin categoría'}</span>
         </div>
         <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-          <span class="text-slate-400 block uppercase text-[10px]">Condición del Bien</span>
-          <span class="font-semibold text-slate-800">${a.condicion || '-'}</span>
+          <span class="text-slate-400 block uppercase text-[10px]">Fuente de Adquisición</span>
+          <span class="font-semibold text-slate-800">${a.origen}</span>
         </div>
       </div>
 
+      ${a.costo ? `
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-xs">
+          <span class="text-slate-400 block uppercase text-[10px]">Costo Registrado</span>
+          <span class="font-bold text-slate-800">$${a.costo.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</span>
+        </div>
+      ` : ''}
+
       ${a.observaciones ? `
         <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Observaciones</h4>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Observaciones / Comentarios</h4>
           <p class="text-slate-700 text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-line">${escapeHtml(a.observaciones)}</p>
         </div>
       ` : ''}
@@ -1173,8 +1384,8 @@ function regeneratePrintLabels() {
         <div class="flex items-center justify-between gap-2 h-[35mm] overflow-hidden px-0.5">
           <!-- Logo Plantel 3 -->
           <div class="flex flex-col items-center justify-center flex-shrink-0">
-            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[31mm] max-h-[31mm] w-auto object-contain">
-            <span class="text-[7.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
+            <img src="/assets/logo_halcon_oficial.png" alt="Halcón Plantel 3" class="h-[29mm] max-h-[29mm] w-auto object-contain">
+            <span class="text-[7px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">PLANTEL 3</span>
           </div>
           <!-- Código de Barras Amplio y Alto -->
           <div class="flex-1 flex items-center justify-center min-w-0 h-full overflow-hidden">
@@ -1187,8 +1398,8 @@ function regeneratePrintLabels() {
         <div class="flex items-center justify-between gap-2.5 h-[35mm] overflow-hidden px-0.5">
           <!-- Logo Plantel 3 -->
           <div class="flex flex-col items-center justify-center flex-shrink-0">
-            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[31mm] max-h-[31mm] w-auto object-contain">
-            <span class="text-[7.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
+            <img src="/assets/logo_halcon_oficial.png" alt="Halcón Plantel 3" class="h-[29mm] max-h-[29mm] w-auto object-contain">
+            <span class="text-[7px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">PLANTEL 3</span>
           </div>
           <!-- QR y Códigos en Grande -->
           <div class="flex-1 flex items-center justify-center gap-3 min-w-0">
@@ -1206,8 +1417,8 @@ function regeneratePrintLabels() {
         <div class="flex items-center justify-between gap-2 h-[34mm] overflow-hidden px-0.5">
           <!-- Logo Plantel 3 -->
           <div class="flex flex-col items-center justify-center flex-shrink-0 h-[30mm]">
-            <img src="/assets/logo_plantel3_halcon_cuerpo_completo.png" alt="Halcón Plantel 3" class="h-[26mm] max-h-[26mm] w-auto object-contain">
-            <span class="text-[6.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">COBACH 3</span>
+            <img src="/assets/logo_halcon_oficial.png" alt="Halcón Plantel 3" class="h-[25mm] max-h-[25mm] w-auto object-contain">
+            <span class="text-[6.5px] font-black text-emerald-950 uppercase tracking-tighter leading-none mt-0.5">PLANTEL 3</span>
           </div>
           <!-- Código de Barras (Centro) -->
           <div class="flex-1 flex items-center justify-center min-w-0 h-[30mm] overflow-hidden">
@@ -1398,4 +1609,148 @@ function exportQueueToExcel() {
   const ids = state.printQueue.map(item => item.id).join(',');
   showToast(`Descargando ${state.printQueue.length} activos de la cola en Excel...`);
   window.location.href = `/api/export/excel?ids=${ids}&scope=COLA`;
+}
+
+// -------------------------------------------------------------
+// VISOR DE IMÁGENES EN ALTA RESOLUCIÓN (LIGHTBOX)
+// -------------------------------------------------------------
+function openLightbox(url, caption, code, isCustom) {
+  const modal = document.getElementById('modal-lightbox');
+  const img = document.getElementById('lightbox-img');
+  const captionEl = document.getElementById('lightbox-caption');
+  const badgeEl = document.getElementById('lightbox-badge');
+  const downloadBtn = document.getElementById('lightbox-download');
+
+  img.src = url;
+  captionEl.textContent = caption || 'Fotografía de Activo';
+  
+  if (isCustom) {
+    badgeEl.textContent = 'Foto particular / daño físico';
+    badgeEl.className = 'ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
+  } else {
+    badgeEl.textContent = 'Foto de catálogo / modelo';
+    badgeEl.className = 'ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-700 text-slate-300 border border-slate-600';
+  }
+
+  downloadBtn.href = url;
+  downloadBtn.setAttribute('download', `activo_${code || 'foto'}.jpg`);
+  modal.classList.remove('hidden');
+}
+
+function closeLightbox() {
+  const modal = document.getElementById('modal-lightbox');
+  if (modal) modal.classList.add('hidden');
+}
+
+// -------------------------------------------------------------
+// SUBIDA Y GESTIÓN DE FOTOGRAFÍAS
+// -------------------------------------------------------------
+function openImageUploadModal(activoId, desc, modelo) {
+  document.getElementById('upload-activo-id').value = activoId;
+  document.getElementById('upload-modal-subtitle').textContent = desc;
+  document.getElementById('input-image-file').value = '';
+  document.getElementById('dropzone-empty').classList.remove('hidden');
+  document.getElementById('dropzone-preview-container').classList.add('hidden');
+  document.getElementById('upload-error').classList.add('hidden');
+
+  const propagateContainer = document.getElementById('upload-propagate-container');
+  const modelNameEl = document.getElementById('upload-model-name');
+  const checkPropagate = document.getElementById('check-propagate-model');
+
+  if (modelo && modelo.trim()) {
+    modelNameEl.textContent = `"${modelo.trim()}"`;
+    checkPropagate.checked = true; // Marcado por defecto
+    propagateContainer.classList.remove('hidden');
+  } else {
+    checkPropagate.checked = false;
+    propagateContainer.classList.add('hidden');
+  }
+
+  document.getElementById('modal-image-upload').classList.remove('hidden');
+}
+
+function closeImageUploadModal() {
+  const modal = document.getElementById('modal-image-upload');
+  if (modal) modal.classList.add('hidden');
+}
+
+function previewSelectedImage(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const previewImg = document.getElementById('dropzone-preview');
+    previewImg.src = e.target.result;
+    document.getElementById('dropzone-empty').classList.add('hidden');
+    document.getElementById('dropzone-preview-container').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitImageUpload(e) {
+  e.preventDefault();
+  const activoId = document.getElementById('upload-activo-id').value;
+  const fileInput = document.getElementById('input-image-file');
+  const errorDiv = document.getElementById('upload-error');
+  const btnSave = document.getElementById('btn-save-image');
+  const propagate = document.getElementById('check-propagate-model').checked;
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    errorDiv.textContent = 'Por favor selecciona o arrastra una imagen antes de guardar.';
+    errorDiv.classList.remove('hidden');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('propagate_model', propagate ? 'true' : 'false');
+  formData.append('override_custom', 'false'); // BLINDAJE: nunca sobreescribir fotos particulares
+
+  errorDiv.classList.add('hidden');
+  btnSave.disabled = true;
+  btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Subiendo...';
+
+  try {
+    const res = await fetch(`/api/activos/${activoId}/imagen`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Error al subir la fotografía');
+
+    closeImageUploadModal();
+    showToast(data.mensaje || 'Fotografía guardada con éxito');
+
+    // Recargar modal de detalle si está abierto
+    const detailModal = document.getElementById('modal-detail');
+    if (detailModal && !detailModal.classList.contains('hidden')) {
+      openDetailModal(activoId);
+    }
+    await loadActivos();
+  } catch (err) {
+    errorDiv.textContent = err.message;
+    errorDiv.classList.remove('hidden');
+  } finally {
+    btnSave.disabled = false;
+    btnSave.innerHTML = '<i class="fa-solid fa-upload"></i> Subir Foto';
+  }
+}
+
+async function removeActivoPhoto(activoId) {
+  if (!confirm('¿Deseas quitar la fotografía asignada a este activo?')) return;
+
+  try {
+    const res = await fetch(`/api/activos/${activoId}/imagen`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al eliminar la foto');
+
+    showToast('Fotografía eliminada');
+    openDetailModal(activoId);
+    await loadActivos();
+  } catch (err) {
+    showToast(err.message, true);
+  }
 }

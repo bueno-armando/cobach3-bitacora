@@ -71,6 +71,7 @@ def get_activos(
                 Activo.marca.ilike(term),
                 Activo.modelo.ilike(term),
                 Activo.especificacion.ilike(term),
+                Activo.observaciones.ilike(term),
                 Activo.ubicacion.has(Ubicacion.nombre.ilike(term)),
                 Activo.categoria.has(Categoria.nombre.ilike(term)),
                 Activo.resguardante.has(Resguardante.nombre.ilike(term))
@@ -87,6 +88,7 @@ def get_activos(
     for a in activos:
         # Normalizar estatus_activo a OPERATIVO si dice ACTIVO
         norm_estatus_activo = "OPERATIVO" if a.estatus_activo == "ACTIVO" else a.estatus_activo
+        cond_act = a.condicion_actual or a.condicion or "Buena 61% - 80%"
         items.append(
             ActivoListItem(
                 id=a.id,
@@ -96,13 +98,19 @@ def get_activos(
                 estatus_etiqueta=a.estatus_etiqueta,
                 estatus_activo=norm_estatus_activo,
                 descripcion=a.descripcion,
+                especificacion=a.especificacion,
                 marca=a.marca,
                 modelo=a.modelo,
                 numero_serie=a.numero_serie,
                 categoria=a.categoria.nombre if a.categoria else None,
                 ubicacion=a.ubicacion.nombre if a.ubicacion else None,
                 resguardante=a.resguardante.nombre if a.resguardante else None,
-                condicion=a.condicion
+                condicion=cond_act,
+                condicion_dg=a.condicion_dg,
+                condicion_actual=cond_act,
+                imagen_url=a.imagen_url,
+                es_foto_personalizada=bool(a.es_foto_personalizada),
+                observaciones=a.observaciones
             )
         )
 
@@ -127,6 +135,7 @@ def get_activo_by_id(db: Session, activo_id: int) -> ActivoDetail:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
     norm_estatus_activo = "OPERATIVO" if activo.estatus_activo == "ACTIVO" else activo.estatus_activo
+    cond_act = activo.condicion_actual or activo.condicion or "Buena 61% - 80%"
 
     return ActivoDetail(
         id=activo.id,
@@ -145,12 +154,16 @@ def get_activo_by_id(db: Session, activo_id: int) -> ActivoDetail:
         resguardante=activo.resguardante.nombre if activo.resguardante else None,
         familia=activo.familia,
         centro_costo=activo.centro_costo,
-        condicion=activo.condicion,
+        condicion=cond_act,
+        condicion_dg=activo.condicion_dg,
+        condicion_actual=cond_act,
         costo=activo.costo,
         donacion_tipo=activo.donacion_tipo,
         orden_compra=activo.orden_compra,
         numero_factura=activo.numero_factura,
         fecha_recepcion=activo.fecha_recepcion,
+        imagen_url=activo.imagen_url,
+        es_foto_personalizada=bool(activo.es_foto_personalizada),
         observaciones=activo.observaciones,
         archivo_fuente=activo.archivo_fuente,
         created_at=activo.created_at,
@@ -163,11 +176,13 @@ def generate_next_codigo_interno(db: Session, origen: str) -> str:
     """Genera el siguiente consecutivo de código interno según el origen."""
     prefix_map = {
         "GASTO": "PL3-GTO",
+        "CONTROL ADMINISTRATIVO": "PL3-CA",
         "C.A.": "PL3-CA",
-        "CENTRAL": "PL3-CEN",
-        "AUDITORIO": "PL3-AUD"
+        "DIRECCION GENERAL": "PL3-DG",
+        "CENTRAL": "PL3-DG",
+        "AUDITORIO": "PL3-DG"
     }
-    pfx = prefix_map.get(origen, "PL3-ACT")
+    pfx = prefix_map.get(origen.strip().upper() if origen else "", "PL3-ACT")
 
     max_num = 0
     activos = db.query(Activo.codigo_interno).filter(Activo.codigo_interno.like(f"{pfx}-%")).all()
@@ -234,6 +249,8 @@ def create_activo(db: Session, data: ActivoCreate) -> ActivoDetail:
     if est_operativo == "ACTIVO":
         est_operativo = "OPERATIVO"
 
+    cond_val = data.condicion_actual or data.condicion or "Buena 61% - 80%"
+
     nuevo = Activo(
         codigo_interno=cod_interno,
         codigo_oficial=cod_oficial,
@@ -248,10 +265,14 @@ def create_activo(db: Session, data: ActivoCreate) -> ActivoDetail:
         categoria_id=cat_id,
         ubicacion_id=ubi_id,
         resguardante_id=res_id,
-        condicion=data.condicion,
+        condicion=cond_val,
+        condicion_dg=data.condicion_dg,
+        condicion_actual=cond_val,
         costo=data.costo,
         numero_factura=data.numero_factura,
         orden_compra=data.orden_compra,
+        imagen_url=data.imagen_url,
+        es_foto_personalizada=data.es_foto_personalizada or False,
         observaciones=data.observaciones,
         archivo_fuente="registro_manual"
     )
@@ -306,14 +327,24 @@ def update_activo(db: Session, activo_id: int, data: ActivoUpdate) -> ActivoDeta
     if data.estatus_operativo is not None:
         est = data.estatus_operativo.strip().upper()
         activo.estatus_activo = "OPERATIVO" if est == "ACTIVO" else est
-    if data.condicion is not None:
+    if data.condicion_actual is not None:
+        activo.condicion_actual = data.condicion_actual
+        activo.condicion = data.condicion_actual
+    elif data.condicion is not None:
         activo.condicion = data.condicion
+        activo.condicion_actual = data.condicion
+    if data.condicion_dg is not None:
+        activo.condicion_dg = data.condicion_dg
     if data.costo is not None:
         activo.costo = data.costo
     if data.numero_factura is not None:
         activo.numero_factura = data.numero_factura
     if data.orden_compra is not None:
         activo.orden_compra = data.orden_compra
+    if data.imagen_url is not None:
+        activo.imagen_url = data.imagen_url
+    if data.es_foto_personalizada is not None:
+        activo.es_foto_personalizada = data.es_foto_personalizada
     if data.observaciones is not None:
         activo.observaciones = data.observaciones
 
@@ -400,6 +431,63 @@ def asignar_etiqueta_oficial(db: Session, activo_id: int, data: AsignarEtiquetaR
     db.refresh(activo)
 
     return get_activo_by_id(db, activo.id)
+
+
+def set_activo_imagen(
+    db: Session,
+    activo_id: int,
+    imagen_url: str,
+    propagate_model: bool = False,
+    override_custom: bool = False
+) -> Dict[str, Any]:
+    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+    if not activo:
+        raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
+
+    # El activo objetivo siempre recibe su foto y se marca como personalizada
+    activo.imagen_url = imagen_url
+    activo.es_foto_personalizada = True
+    propagated_count = 0
+
+    if propagate_model and activo.modelo and activo.modelo.strip():
+        modelo_clean = activo.modelo.strip()
+        query_model = db.query(Activo).filter(
+            Activo.modelo == modelo_clean,
+            Activo.id != activo.id
+        )
+        if not override_custom:
+            # BLINDAJE DE FOTOS PARTICULARES: No sobreescribir las que ya tienen foto personalizada
+            query_model = query_model.filter(Activo.es_foto_personalizada == False)
+
+        hermanos = query_model.all()
+        for h in hermanos:
+            h.imagen_url = imagen_url
+            h.es_foto_personalizada = False  # Es genérica de modelo
+            propagated_count += 1
+
+    db.commit()
+    db.refresh(activo)
+
+    return {
+        "success": True,
+        "activo_id": activo.id,
+        "imagen_url": activo.imagen_url,
+        "es_foto_personalizada": activo.es_foto_personalizada,
+        "propagados_a_modelo": propagated_count,
+        "mensaje": f"Foto guardada con éxito.{f' Aplicada además a {propagated_count} activos del modelo.' if propagated_count > 0 else ''}"
+    }
+
+
+def delete_activo_imagen(db: Session, activo_id: int) -> Dict[str, Any]:
+    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+    if not activo:
+        raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
+
+    activo.imagen_url = None
+    activo.es_foto_personalizada = False
+    db.commit()
+
+    return {"success": True, "message": "Foto eliminada del activo"}
 
 
 def get_catalogos(db: Session) -> Dict[str, Any]:
@@ -504,15 +592,18 @@ def export_activos_to_excel(
         "Estatus Etiqueta",
         "Estatus Operativo",
         "Descripción",
+        "Especificación",
         "Marca",
         "Modelo",
         "Número de Serie",
         "Ubicación",
         "Categoría",
         "Resguardante",
-        "Origen",
+        "Fuente (Origen)",
+        "Condición D.G.",
+        "Condición Actual (Plantel 3)",
         "Fecha Registro",
-        "Observaciones"
+        "Observaciones / Comentarios"
     ]
     ws.append(headers)
 
@@ -539,6 +630,7 @@ def export_activos_to_excel(
 
     for a in activos:
         est_etiq = "OFICIAL" if a.estatus_etiqueta == "ETIQUETADO_OFICIAL" else "PENDIENTE"
+        cond_act = a.condicion_actual or a.condicion or "Buena 61% - 80%"
         row_data = [
             a.id,
             a.codigo_interno,
@@ -546,6 +638,7 @@ def export_activos_to_excel(
             est_etiq,
             a.estatus_activo or "OPERATIVO",
             a.descripcion,
+            a.especificacion or "",
             a.marca or "",
             a.modelo or "",
             a.numero_serie or "",
@@ -553,6 +646,8 @@ def export_activos_to_excel(
             a.categoria.nombre if a.categoria else "",
             a.resguardante.nombre if a.resguardante else "",
             a.origen,
+            a.condicion_dg or "",
+            cond_act,
             a.created_at.strftime("%Y-%m-%d") if a.created_at else "",
             a.observaciones or ""
         ]
@@ -561,7 +656,7 @@ def export_activos_to_excel(
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
         for idx, cell in enumerate(row):
             cell.border = thin_border
-            if idx in (0, 1, 2, 3, 4, 12, 13):
+            if idx in (0, 1, 2, 3, 4, 13, 14, 15, 16):
                 cell.alignment = center_align
             else:
                 cell.alignment = left_align

@@ -42,6 +42,7 @@ class ActivoListItem(BaseModel):
     estatus_etiqueta: str
     estatus_activo: str
     descripcion: str
+    especificacion: Optional[str] = None
     marca: Optional[str] = None
     modelo: Optional[str] = None
     numero_serie: Optional[str] = None
@@ -49,6 +50,11 @@ class ActivoListItem(BaseModel):
     ubicacion: Optional[str] = None
     resguardante: Optional[str] = None
     condicion: Optional[str] = None
+    condicion_dg: Optional[str] = None
+    condicion_actual: Optional[str] = None
+    imagen_url: Optional[str] = None
+    es_foto_personalizada: bool = False
+    observaciones: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -71,11 +77,15 @@ class ActivoDetail(BaseModel):
     familia: Optional[str] = None
     centro_costo: Optional[str] = None
     condicion: Optional[str] = None
+    condicion_dg: Optional[str] = None
+    condicion_actual: Optional[str] = None
     costo: Optional[float] = None
     donacion_tipo: Optional[str] = None
     orden_compra: Optional[str] = None
     numero_factura: Optional[str] = None
     fecha_recepcion: Optional[date] = None
+    imagen_url: Optional[str] = None
+    es_foto_personalizada: bool = False
     observaciones: Optional[str] = None
     archivo_fuente: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -102,7 +112,7 @@ class AsignarEtiquetaRequest(BaseModel):
 class ActivoCreate(BaseModel):
     codigo_interno: Optional[str] = None
     codigo_oficial: Optional[str] = None
-    origen: str = "GASTO"  # 'GASTO', 'C.A.', 'CENTRAL', 'AUDITORIO'
+    origen: str = "GASTO"  # 'GASTO', 'CONTROL ADMINISTRATIVO', 'DIRECCION GENERAL'
     estatus_operativo: str = "OPERATIVO"  # 'OPERATIVO', 'EN_DESUSO', 'EN_REPARACION', 'BAJA'
     descripcion: str
     especificacion: Optional[str] = None
@@ -115,10 +125,14 @@ class ActivoCreate(BaseModel):
     ubicacion_nombre: Optional[str] = None
     resguardante_id: Optional[int] = None
     resguardante_nombre: Optional[str] = None
-    condicion: Optional[str] = "Buena"
+    condicion: Optional[str] = "Buena 61% - 80%"
+    condicion_actual: Optional[str] = "Buena 61% - 80%"
+    condicion_dg: Optional[str] = None
     costo: Optional[float] = None
     numero_factura: Optional[str] = None
     orden_compra: Optional[str] = None
+    imagen_url: Optional[str] = None
+    es_foto_personalizada: bool = False
     observaciones: Optional[str] = None
 
 
@@ -140,10 +154,23 @@ class ActivoUpdate(BaseModel):
     resguardante_id: Optional[int] = None
     resguardante_nombre: Optional[str] = None
     condicion: Optional[str] = None
+    condicion_actual: Optional[str] = None
+    condicion_dg: Optional[str] = None
     costo: Optional[float] = None
     numero_factura: Optional[str] = None
     orden_compra: Optional[str] = None
+    imagen_url: Optional[str] = None
+    es_foto_personalizada: Optional[bool] = None
     observaciones: Optional[str] = None
+
+
+class ImagenUploadResponse(BaseModel):
+    success: bool
+    activo_id: int
+    imagen_url: str
+    es_foto_personalizada: bool
+    propagados_a_modelo: int = 0
+    mensaje: str
 
 
 class CambiarEstatusRequest(BaseModel):

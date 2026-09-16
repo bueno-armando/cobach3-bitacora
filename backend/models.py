@@ -50,7 +50,7 @@ class Activo(Base):
     codigo_oficial = Column(String(50), unique=True, nullable=True, index=True)
     
     # Clasificación y Estatus
-    origen = Column(String(30), nullable=False, index=True)  # 'GASTO', 'C.A.', 'CENTRAL', 'AUDITORIO'
+    origen = Column(String(50), nullable=False, index=True)  # 'GASTO', 'CONTROL ADMINISTRATIVO', 'DIRECCION GENERAL'
     estatus_etiqueta = Column(String(30), default="PENDIENTE_ETIQUETA", nullable=False, index=True)  # 'PENDIENTE_ETIQUETA', 'ETIQUETADO_OFICIAL'
     estatus_activo = Column(String(50), default="ACTIVO", nullable=False)  # 'ACTIVO', 'BAJA', 'EN_REPARACION'
     
@@ -61,6 +61,10 @@ class Activo(Base):
     modelo = Column(String(100), nullable=True)
     numero_serie = Column(String(100), nullable=True, index=True)
     
+    # Fotografías y multimedia
+    imagen_url = Column(String(255), nullable=True)
+    es_foto_personalizada = Column(Boolean, default=False, nullable=False)
+    
     # Relaciones / Catálogos
     categoria_id = Column(Integer, ForeignKey("categorias.id"), nullable=True)
     ubicacion_id = Column(Integer, ForeignKey("ubicaciones.id"), nullable=True, index=True)
@@ -69,7 +73,9 @@ class Activo(Base):
     # Datos administrativos y financieros
     familia = Column(String(50), nullable=True)
     centro_costo = Column(String(100), default="PLANTEL 3", nullable=True)
-    condicion = Column(String(100), nullable=True)
+    condicion = Column(String(100), nullable=True)  # Retrocompatibilidad
+    condicion_dg = Column(String(100), nullable=True)  # Condición inicial de Dirección General
+    condicion_actual = Column(String(100), default="Buena 61% - 80%", nullable=True)  # Condición modificable local
     costo = Column(Float, nullable=True)
     donacion_tipo = Column(String(100), nullable=True)
     orden_compra = Column(String(100), nullable=True)

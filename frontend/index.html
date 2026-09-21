@@ -349,26 +349,26 @@
     </div>
 
     <!-- TABLA DE ACTIVOS -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs sm:text-sm">
-          <thead class="bg-slate-100 text-slate-600 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+      <div class="overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-100/95 backdrop-blur-xs text-slate-700 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 shadow-xs">
             <tr>
-              <th scope="col" class="py-3 px-3 text-center w-10">
+              <th scope="col" class="py-2.5 px-3 text-center w-10">
                 <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" title="Seleccionar todos en esta página" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
               </th>
-              <th scope="col" class="py-3 px-2 text-center w-12">Foto</th>
-              <th scope="col" class="py-3 px-3 whitespace-nowrap">Núm. Inventario</th>
-              <th scope="col" class="py-3 px-4 min-w-[180px]">Descripción</th>
-              <th scope="col" class="py-3 px-4 min-w-[170px]">Especificación</th>
-              <th scope="col" class="py-3 px-3 whitespace-nowrap">Núm. Serie</th>
-              <th scope="col" class="py-3 px-3">Marca</th>
-              <th scope="col" class="py-3 px-3">Modelo</th>
-              <th scope="col" class="py-3 px-4 min-w-[160px]">Ubicación</th>
-              <th scope="col" class="py-3 px-3 text-center min-w-[240px]">Acciones</th>
+              <th scope="col" class="py-2.5 px-2 text-center w-12">Foto</th>
+              <th scope="col" class="py-2.5 px-3 whitespace-nowrap min-w-[110px]">Núm. Inventario</th>
+              <th scope="col" class="py-2.5 px-3 min-w-[190px] max-w-[240px]">Descripción</th>
+              <th scope="col" class="py-2.5 px-3 min-w-[150px] max-w-[180px]">Especificación</th>
+              <th scope="col" class="py-2.5 px-3 whitespace-nowrap min-w-[110px]">Núm. Serie</th>
+              <th scope="col" class="py-2.5 px-2.5 min-w-[90px] max-w-[120px]">Marca</th>
+              <th scope="col" class="py-2.5 px-2.5 min-w-[100px] max-w-[130px]">Modelo</th>
+              <th scope="col" class="py-2.5 px-3 min-w-[140px] max-w-[180px]">Ubicación</th>
+              <th scope="col" class="py-2.5 px-3 text-center min-w-[250px] whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
-          <tbody id="activos-table-body" class="divide-y divide-slate-100">
+          <tbody id="activos-table-body" class="divide-y divide-slate-100 bg-white">
             <!-- Filas dinámicas generadas por JavaScript -->
           </tbody>
         </table>
@@ -1127,6 +1127,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=4"></script>
+  <script src="/app.js?v=5"></script>
 </body>
 </html>

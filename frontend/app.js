@@ -173,17 +173,17 @@ function renderTable(items) {
             src="${item.imagen_url}" 
             alt="Foto" 
             onclick="openLightbox('${item.imagen_url}', '${captionText}', '${item.codigo_interno}', ${Boolean(item.es_foto_personalizada)})"
-            class="w-9 h-9 rounded-lg object-cover cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-emerald-500 transition border border-slate-200 shadow-xs bg-slate-100"
+            class="w-8 h-8 rounded-lg object-cover cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-emerald-500 transition border border-slate-200 shadow-xs bg-slate-100"
             title="Clic para ver en tamaño completo"
           >
-          ${item.es_foto_personalizada ? '<span class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 border border-white rounded-full" title="Foto particular de este activo"></span>' : ''}
+          ${item.es_foto_personalizada ? '<span class="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 border border-white rounded-full" title="Foto particular de este activo"></span>' : ''}
         </div>
       `;
     } else {
       fotoHtml = `
         <button 
           onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
-          class="w-9 h-9 rounded-lg border border-dashed border-slate-300 text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition flex items-center justify-center text-xs"
+          class="w-8 h-8 rounded-lg border border-dashed border-slate-300 text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition flex items-center justify-center text-xs"
           title="Subir fotografía para este activo"
         >
           <i class="fa-solid fa-camera"></i>
@@ -197,20 +197,20 @@ function renderTable(items) {
     if (item.estatus_etiqueta === 'ETIQUETADO_OFICIAL' && item.codigo_oficial) {
       invHtml = `
         <div class="space-y-0.5">
-          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" title="Código Oficial (Etiqueta Verde)">
-            <i class="fa-solid fa-tag mr-1 text-emerald-600 text-[9px]"></i> #${item.codigo_oficial}
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" title="Código Oficial (Etiqueta Verde)">
+            <i class="fa-solid fa-tag mr-1 text-emerald-600 text-[8px]"></i> #${item.codigo_oficial}
           </span>
-          <div class="text-[10px] font-mono text-slate-400">${item.codigo_interno}</div>
+          <div class="text-[10px] font-mono text-slate-400 leading-none">${item.codigo_interno}</div>
         </div>
       `;
     } else {
       invHtml = `
         <div class="space-y-0.5">
-          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-amber-100 text-amber-900 border border-amber-300" title="Código Interno provisional">
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold bg-amber-100 text-amber-900 border border-amber-300" title="Código Interno provisional">
             ${item.codigo_interno}
           </span>
-          <div class="text-[10px] text-amber-700 font-semibold flex items-center gap-1">
-            <i class="fa-solid fa-clock text-[9px]"></i> Pendiente
+          <div class="text-[9px] text-amber-700 font-semibold flex items-center gap-1 leading-none">
+            <i class="fa-solid fa-clock text-[8px]"></i> Pendiente
           </div>
         </div>
       `;
@@ -218,7 +218,7 @@ function renderTable(items) {
         <button 
           onclick="openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')"
           title="Registrar Etiqueta Verde Oficial" 
-          class="btn-pop-sm w-8 h-8 rounded-xl text-amber-800 bg-amber-100 hover:bg-amber-200 hover:text-amber-950 border border-amber-300 flex items-center justify-center transition text-sm shadow-xs"
+          class="btn-pop-sm w-7.5 h-7.5 rounded-lg text-amber-800 bg-amber-100 hover:bg-amber-200 hover:text-amber-950 border border-amber-300 flex items-center justify-center transition text-xs shadow-xs"
         >
           <i class="fa-solid fa-tag"></i>
         </button>
@@ -236,104 +236,106 @@ function renderTable(items) {
     }
 
     return `
-      <tr class="hover:bg-slate-50 transition text-xs">
+      <tr class="hover:bg-emerald-50/40 transition text-xs border-b border-slate-100/80">
         <!-- 1. Checkbox Selección -->
-        <td class="py-3 px-3 text-center">
+        <td class="py-2 px-2.5 text-center align-middle">
           <input type="checkbox" class="row-checkbox rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" data-id="${item.id}" ${isChecked} onchange="toggleRowSelection(${item.id}, this)">
         </td>
 
         <!-- 2. Foto -->
-        <td class="py-2.5 px-2 text-center">
+        <td class="py-1.5 px-2 text-center align-middle">
           ${fotoHtml}
         </td>
 
         <!-- 3. Número de Inventario -->
-        <td class="py-3 px-3 whitespace-nowrap">
+        <td class="py-2 px-3 whitespace-nowrap align-middle">
           ${invHtml}
         </td>
 
         <!-- 4. Descripción -->
-        <td class="py-3 px-4">
-          <div class="font-bold text-slate-800 leading-snug">${escapeHtml(item.descripcion)}</div>
-          <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+        <td class="py-2 px-3 align-middle max-w-[220px]">
+          <div class="font-bold text-slate-800 leading-tight truncate text-xs" title="${escapeHtml(item.descripcion)}">
+            ${escapeHtml(item.descripcion)}
+          </div>
+          <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 leading-none truncate">
             ${origenPill}
-            ${item.categoria ? `<span class="text-slate-400">· <i class="fa-solid fa-layer-group text-[9px]"></i> ${escapeHtml(item.categoria)}</span>` : ''}
+            ${item.categoria ? `<span class="text-slate-400 truncate max-w-[130px]" title="${escapeHtml(item.categoria)}">· ${escapeHtml(item.categoria)}</span>` : ''}
           </div>
         </td>
 
         <!-- 5. Especificación -->
-        <td class="py-3 px-4">
+        <td class="py-2 px-3 align-middle max-w-[170px]">
           ${item.especificacion ? `
-            <div class="text-slate-600 max-w-[200px] truncate leading-tight" title="${escapeHtml(item.especificacion)}">
+            <div class="text-slate-600 max-w-[160px] truncate leading-tight text-xs" title="${escapeHtml(item.especificacion)}">
               ${escapeHtml(item.especificacion)}
             </div>
           ` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
         </td>
 
         <!-- 6. Número de Serie -->
-        <td class="py-3 px-3 font-mono whitespace-nowrap">
+        <td class="py-2 px-3 font-mono whitespace-nowrap align-middle max-w-[120px]">
           ${item.numero_serie ? `
-            <span class="text-slate-700 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[11px] border border-slate-200" title="${escapeHtml(item.numero_serie)}">
+            <span class="text-slate-700 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[10px] border border-slate-200 inline-block max-w-[110px] truncate" title="${escapeHtml(item.numero_serie)}">
               ${escapeHtml(item.numero_serie)}
             </span>
-          ` : '<span class="text-slate-300 italic text-[11px]">S/N</span>'}
+          ` : '<span class="text-slate-300 italic text-[10px]">S/N</span>'}
         </td>
 
         <!-- 7. Marca -->
-        <td class="py-3 px-3">
-          ${item.marca ? `<span class="font-semibold text-slate-700">${escapeHtml(item.marca)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+        <td class="py-2 px-2.5 align-middle max-w-[100px]">
+          ${item.marca ? `<span class="font-semibold text-slate-700 block truncate" title="${escapeHtml(item.marca)}">${escapeHtml(item.marca)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
         </td>
 
         <!-- 8. Modelo -->
-        <td class="py-3 px-3">
-          ${item.modelo ? `<span class="text-slate-600 font-medium">${escapeHtml(item.modelo)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+        <td class="py-2 px-2.5 align-middle max-w-[110px]">
+          ${item.modelo ? `<span class="text-slate-600 font-medium block truncate" title="${escapeHtml(item.modelo)}">${escapeHtml(item.modelo)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
         </td>
 
         <!-- 9. Ubicación -->
-        <td class="py-3 px-4">
+        <td class="py-2 px-3 align-middle max-w-[170px]">
           ${item.ubicacion ? `
-            <div class="flex items-center gap-1.5 text-slate-700 font-semibold max-w-[180px] truncate text-xs" title="${escapeHtml(item.ubicacion)}">
-              <i class="fa-solid fa-location-dot text-emerald-600 text-[11px] flex-shrink-0"></i>
-              <span class="truncate">${escapeHtml(item.ubicacion)}</span>
+            <div class="flex items-center gap-1.5 text-slate-700 font-semibold max-w-[160px] min-w-0 text-xs" title="${escapeHtml(item.ubicacion)}">
+              <i class="fa-solid fa-location-dot text-emerald-600 text-[10px] flex-shrink-0"></i>
+              <span class="truncate min-w-0">${escapeHtml(item.ubicacion)}</span>
             </div>
           ` : '<span class="text-slate-300 italic text-[11px]">Sin asignar</span>'}
         </td>
 
         <!-- 10. Acciones -->
-        <td class="py-3 px-3 text-center whitespace-nowrap">
-          <div class="flex items-center justify-center gap-1.5">
+        <td class="py-2 px-3 text-center whitespace-nowrap align-middle">
+          <div class="flex items-center justify-center gap-1">
             <button 
               onclick="openDetailModal(${item.id})"
               title="Ver detalle completo"
-              class="btn-pop-sm w-8 h-8 rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/80 flex items-center justify-center transition text-sm shadow-xs"
+              class="btn-pop-sm w-8 h-8 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/80 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-circle-info"></i>
             </button>
             <button 
               onclick="openEditModal(${item.id})"
               title="Editar activo"
-              class="btn-pop-sm w-8 h-8 rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-sm shadow-xs"
+              class="btn-pop-sm w-8 h-8 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
             <button 
               onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
               title="Subir o cambiar fotografía"
-              class="btn-pop-sm w-8 h-8 rounded-xl text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900 border border-purple-200/80 flex items-center justify-center transition text-sm shadow-xs"
+              class="btn-pop-sm w-8 h-8 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900 border border-purple-200/80 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-camera"></i>
             </button>
             <button 
               onclick="addSingleToQueue(${item.id})"
               title="Agregar a Cola de Impresión"
-              class="btn-pop-sm w-8 h-8 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 flex items-center justify-center transition text-sm shadow-xs"
+              class="btn-pop-sm w-8 h-8 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-folder-plus"></i>
             </button>
             <button 
               onclick="openPrintSingle(${item.id})"
               title="Imprimir Etiqueta"
-              class="btn-pop-sm w-8 h-8 rounded-xl text-slate-800 bg-slate-100 hover:bg-slate-200 hover:text-slate-950 border border-slate-300 flex items-center justify-center transition text-sm shadow-xs"
+              class="btn-pop-sm w-8 h-8 rounded-lg text-slate-800 bg-slate-100 hover:bg-slate-200 hover:text-slate-950 border border-slate-300 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-print"></i>
             </button>
@@ -341,7 +343,7 @@ function renderTable(items) {
             <button 
               onclick="openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')"
               title="Eliminar activo"
-              class="btn-pop-sm w-8 h-8 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200/80 flex items-center justify-center transition text-sm shadow-xs"
+              class="btn-pop-sm w-8 h-8 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200/80 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-trash"></i>
             </button>

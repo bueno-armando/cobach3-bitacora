@@ -1,0 +1,16 @@
+CORRECCIONES:
+- Panel superior:
+	* Que en vez de "Inventario" diga "Bienes Muebles"
+	* Que en vez de "Dirección General" diga "Código Etiqueta (D.G)"
+	* Reemplazar campo "Comentarios" por un campo de "Ubicación"
+- Cola para exportar/imprimir:
+	* Poder elegir que columnas de la BD se van a exportar
+- Misc:
+	* Consistencia con la plataforma original:
+		* Ubicaciones físicas (aunque no se vayan a usar)
+	* Ver por qué hay artículos agrupados por ubicación
+	* Tomar de la plataforma oficial las fotos e implementarlas en la BD local
+	* CAMBIO GRANDE: 
+        - Modal "Registrar Nuevo Activo"
+	        * Reemplazar campo de Código Interno por aviso de que se va a generar automáticamente (no queremos que el usuario pueda introducirlo manualmente)
+    * Preparar el manejo de usuarios, roles, sesiones, credenciales etc. El encargado de sistemas propuso, para no batallar con la creación de usuarios para cada maestro, simplemente crear usuarios default para cada rol. discutir con la IA esto y otros aspectos como los roles

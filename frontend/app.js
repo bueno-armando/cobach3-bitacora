@@ -257,7 +257,7 @@ function renderTable(items) {
           <div class="font-bold text-slate-800 leading-snug">${escapeHtml(item.descripcion)}</div>
           <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
             ${origenPill}
-            ${item.ubicacion ? `<span class="text-slate-400">· <i class="fa-solid fa-location-dot text-[9px]"></i> ${escapeHtml(item.ubicacion)}</span>` : ''}
+            ${item.categoria ? `<span class="text-slate-400">· <i class="fa-solid fa-layer-group text-[9px]"></i> ${escapeHtml(item.categoria)}</span>` : ''}
           </div>
         </td>
 
@@ -289,13 +289,14 @@ function renderTable(items) {
           ${item.modelo ? `<span class="text-slate-600 font-medium">${escapeHtml(item.modelo)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
         </td>
 
-        <!-- 9. Comentarios (Observaciones) -->
+        <!-- 9. Ubicación -->
         <td class="py-3 px-4">
-          ${item.observaciones ? `
-            <div class="text-slate-500 italic max-w-[170px] truncate text-[11px] leading-tight" title="${escapeHtml(item.observaciones)}">
-              "${escapeHtml(item.observaciones)}"
+          ${item.ubicacion ? `
+            <div class="flex items-center gap-1.5 text-slate-700 font-semibold max-w-[180px] truncate text-xs" title="${escapeHtml(item.ubicacion)}">
+              <i class="fa-solid fa-location-dot text-emerald-600 text-[11px] flex-shrink-0"></i>
+              <span class="truncate">${escapeHtml(item.ubicacion)}</span>
             </div>
-          ` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+          ` : '<span class="text-slate-300 italic text-[11px]">Sin asignar</span>'}
         </td>
 
         <!-- 10. Acciones -->
@@ -524,6 +525,14 @@ function nextPage() {
 function updatePriceIndicator() {
   const origen = document.getElementById('form-origen').value;
   const ind = document.getElementById('source-price-indicator');
+  const preview = document.getElementById('auto-code-preview');
+
+  let previewCode = 'PL3-GTO-XXXX';
+  if (origen === 'CONTROL ADMINISTRATIVO') previewCode = 'PL3-CA-XXXX';
+  else if (origen === 'DIRECCION GENERAL') previewCode = 'PL3-DG-XXXXXX';
+
+  if (preview) preview.textContent = previewCode;
+
   if (!ind) return;
 
   if (origen === 'GASTO') {
@@ -547,7 +556,7 @@ function updatePriceIndicator() {
     ind.innerHTML = `
       <i class="fa-solid fa-building-columns text-emerald-700 text-sm flex-shrink-0"></i>
       <div>
-        <span class="font-bold">Dirección General ($7,901+ MXN):</span> Asignado por Dirección General. Portará Etiqueta Verde Oficial con Código numérico.
+        <span class="font-bold">Código Etiqueta (D.G):</span> Asignado por Dirección General. Portará Etiqueta Verde Oficial con Código numérico. Consecutivo <code class="font-mono font-bold bg-emerald-100 px-1 py-0.5 rounded">PL3-DG-XXXXXX</code>.
       </div>
     `;
   }
@@ -570,7 +579,14 @@ function openCreateModal() {
   document.getElementById('form-condicion').value = 'Buena 61% - 80%';
   document.getElementById('form-costo').value = '';
   document.getElementById('form-estatus-operativo').value = 'OPERATIVO';
+  
+  // Toggle contenedores de código: mostrar auto badge, ocultar input bloqueado
+  const autoContainer = document.getElementById('container-codigo-auto');
+  const editContainer = document.getElementById('container-codigo-edit');
+  if (autoContainer) autoContainer.classList.remove('hidden');
+  if (editContainer) editContainer.classList.add('hidden');
   document.getElementById('form-codigo-interno').value = '';
+
   document.getElementById('form-codigo-oficial').value = '';
   document.getElementById('form-descripcion').value = '';
   document.getElementById('form-marca').value = '';
@@ -602,7 +618,14 @@ async function openEditModal(id) {
     document.getElementById('form-condicion').value = a.condicion_actual || a.condicion || 'Buena 61% - 80%';
     document.getElementById('form-costo').value = a.costo !== null && a.costo !== undefined ? a.costo : '';
     document.getElementById('form-estatus-operativo').value = a.estatus_activo;
+
+    // Toggle contenedores de código: ocultar auto badge, mostrar input bloqueado
+    const autoContainer = document.getElementById('container-codigo-auto');
+    const editContainer = document.getElementById('container-codigo-edit');
+    if (autoContainer) autoContainer.classList.add('hidden');
+    if (editContainer) editContainer.classList.remove('hidden');
     document.getElementById('form-codigo-interno').value = a.codigo_interno;
+
     document.getElementById('form-codigo-oficial').value = a.codigo_oficial || '';
     document.getElementById('form-descripcion').value = a.descripcion;
     document.getElementById('form-marca').value = a.marca || '';
@@ -638,7 +661,7 @@ async function submitAssetForm(e) {
     condicion_actual: document.getElementById('form-condicion').value,
     costo: costoVal ? parseFloat(costoVal) : null,
     estatus_operativo: document.getElementById('form-estatus-operativo').value,
-    codigo_interno: document.getElementById('form-codigo-interno').value.trim() || null,
+    codigo_interno: isEdit ? (document.getElementById('form-codigo-interno').value.trim() || null) : null,
     codigo_oficial: document.getElementById('form-codigo-oficial').value.trim() || null,
     descripcion: document.getElementById('form-descripcion').value.trim(),
     marca: document.getElementById('form-marca').value.trim() || null,
@@ -1521,6 +1544,30 @@ function escapeHtml(str) {
 // ==========================================
 // MÓDULO DE EXPORTACIÓN A EXCEL (.xlsx)
 // ==========================================
+function getSelectedExportCols() {
+  const checked = document.querySelectorAll('input[name="export-col"]:checked');
+  const cols = Array.from(checked).map(cb => cb.value);
+  return cols.join(',');
+}
+
+function selectAllExportCols(checked) {
+  document.querySelectorAll('input[name="export-col"]').forEach(cb => {
+    cb.checked = checked;
+  });
+}
+
+function selectDefaultExportCols() {
+  const defaultCols = new Set([
+    'codigo_interno', 'codigo_oficial', 'descripcion', 'especificacion',
+    'marca', 'modelo', 'numero_serie', 'ubicacion', 'categoria',
+    'resguardante', 'origen', 'condicion_dg', 'condicion_actual',
+    'costo', 'estatus_activo', 'observaciones'
+  ]);
+  document.querySelectorAll('input[name="export-col"]').forEach(cb => {
+    cb.checked = defaultCols.has(cb.value);
+  });
+}
+
 function openExportModal() {
   const modal = document.getElementById('modal-export');
   const optFiltered = document.getElementById('export-opt-filtered');
@@ -1531,30 +1578,30 @@ function openExportModal() {
 
   // Detectar si hay filtros activos
   const hasFilter = Boolean(
-    state.origen || 
-    state.q || 
-    state.ubicacionId || 
-    state.categoriaId || 
-    state.estatusEtiqueta || 
-    state.estatusActivo
+    state.tab || 
+    (state.q && state.q.trim()) || 
+    state.ubicacion_id || 
+    state.categoria_id || 
+    state.estatus_activo
   );
 
   if (hasFilter) {
     optFiltered.classList.remove('hidden');
-    let filterLabel = state.origen ? `Área: ${state.origen}` : '';
-    if (state.q) filterLabel += (filterLabel ? ' + ' : '') + `"${state.q}"`;
-    if (state.estatusEtiqueta === 'PENDIENTE_ETIQUETA') filterLabel += ' (Pendientes)';
+    let filterLabel = state.tab ? `Sección: ${state.tab}` : '';
+    if (state.q && state.q.trim()) filterLabel += (filterLabel ? ' + ' : '') + `"${state.q.trim()}"`;
+    if (state.tab === 'PENDIENTES') filterLabel += ' (Pendientes)';
 
-    filteredTitle.textContent = `Exportar Vista Filtrada (${state.total.toLocaleString()} activos)`;
+    filteredTitle.textContent = `Exportar Vista Filtrada (${(state.totalItems || 0).toLocaleString()} activos)`;
     filteredDesc.textContent = `Descarga únicamente los registros que cumplen: ${filterLabel || 'Filtro actual'}`;
   } else {
     optFiltered.classList.add('hidden');
   }
 
-  // Opción de cola si hay elementos
-  if (state.printQueue && state.printQueue.length > 0) {
+  // Opción de cola si hay elementos (state.printQueue es un Map)
+  const queueSize = state.printQueue ? state.printQueue.size : 0;
+  if (queueSize > 0) {
     optQueue.classList.remove('hidden');
-    queueCountEl.textContent = state.printQueue.length;
+    queueCountEl.textContent = queueSize;
   } else {
     optQueue.classList.add('hidden');
   }
@@ -1570,23 +1617,37 @@ function closeExportModal() {
 function downloadExcelAll() {
   closeExportModal();
   showToast('Generando reporte completo de inventario...');
-  window.location.href = '/api/export/excel';
+  const cols = getSelectedExportCols();
+  const url = cols ? `/api/export/excel?columnas=${encodeURIComponent(cols)}` : '/api/export/excel';
+  window.location.href = url;
 }
 
 function downloadExcelFiltered() {
   closeExportModal();
   const params = new URLSearchParams();
-  if (state.q) params.append('q', state.q);
-  if (state.origen) {
-    params.append('origen', state.origen);
-    params.append('scope', state.origen);
+  if (state.q && state.q.trim()) params.append('q', state.q.trim());
+  if (state.tab === 'GASTO') {
+    params.append('origen', 'GASTO');
+    params.append('scope', 'GASTO');
+  } else if (state.tab === 'CONTROL ADMINISTRATIVO' || state.tab === 'C.A.') {
+    params.append('origen', 'CONTROL ADMINISTRATIVO');
+    params.append('scope', 'CONTROL ADMINISTRATIVO');
+  } else if (state.tab === 'DIRECCION GENERAL' || state.tab === 'CENTRAL') {
+    params.append('origen', 'DIRECCION GENERAL');
+    params.append('scope', 'DIRECCION GENERAL');
+  } else if (state.tab === 'PENDIENTES') {
+    params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
+    params.append('scope', 'PENDIENTES');
   }
-  if (state.ubicacionId) params.append('ubicacion_id', state.ubicacionId);
-  if (state.categoriaId) params.append('categoria_id', state.categoriaId);
-  if (state.estatusEtiqueta) params.append('estatus_etiqueta', state.estatusEtiqueta);
-  if (state.estatusActivo) params.append('estatus_activo', state.estatusActivo);
 
-  showToast(`Generando reporte filtrado (${state.total} activos)...`);
+  if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
+  if (state.categoria_id) params.append('categoria_id', state.categoria_id);
+  if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
+
+  const cols = getSelectedExportCols();
+  if (cols) params.append('columnas', cols);
+
+  showToast(`Generando reporte filtrado (${state.totalItems || 0} activos)...`);
   window.location.href = '/api/export/excel?' + params.toString();
 }
 
@@ -1596,19 +1657,24 @@ function exportSelectedToExcel() {
     return;
   }
   const ids = Array.from(state.selectedIds).join(',');
+  const cols = getSelectedExportCols();
+  const colParam = cols ? `&columnas=${encodeURIComponent(cols)}` : '';
   showToast(`Descargando ${state.selectedIds.size} activos seleccionados en Excel...`);
-  window.location.href = `/api/export/excel?ids=${ids}&scope=SELECCION`;
+  window.location.href = `/api/export/excel?ids=${ids}&scope=SELECCION${colParam}`;
 }
 
 function exportQueueToExcel() {
-  if (!state.printQueue || state.printQueue.length === 0) {
+  const queueSize = state.printQueue ? state.printQueue.size : 0;
+  if (queueSize === 0) {
     showToast('La cola de impresión no tiene activos acumulados', true);
     return;
   }
   closeExportModal();
-  const ids = state.printQueue.map(item => item.id).join(',');
-  showToast(`Descargando ${state.printQueue.length} activos de la cola en Excel...`);
-  window.location.href = `/api/export/excel?ids=${ids}&scope=COLA`;
+  const ids = Array.from(state.printQueue.keys()).join(',');
+  const cols = getSelectedExportCols();
+  const colParam = cols ? `&columnas=${encodeURIComponent(cols)}` : '';
+  showToast(`Descargando ${queueSize} activos de la cola en Excel...`);
+  window.location.href = `/api/export/excel?ids=${ids}&scope=COLA${colParam}`;
 }
 
 // -------------------------------------------------------------

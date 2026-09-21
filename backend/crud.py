@@ -539,7 +539,8 @@ def export_activos_to_excel(
     resguardante_id: Optional[int] = None,
     estatus_etiqueta: Optional[str] = None,
     estatus_activo: Optional[str] = None,
-    ids: Optional[List[int]] = None
+    ids: Optional[List[int]] = None,
+    columnas: Optional[List[str]] = None
 ) -> io.BytesIO:
     query = db.query(Activo).options(
         joinedload(Activo.categoria),
@@ -581,30 +582,50 @@ def export_activos_to_excel(
 
     activos = query.order_by(Activo.id.asc()).all()
 
+    # Columnas disponibles con su título, función extractora y si se alinea al centro
+    AVAILABLE_COLUMNS: Dict[str, Tuple[str, Any, bool]] = {
+        "id": ("ID", lambda a: a.id, True),
+        "codigo_interno": ("Código Interno", lambda a: a.codigo_interno, True),
+        "codigo_oficial": ("Código Oficial (Etiqueta Verde)", lambda a: a.codigo_oficial or "", True),
+        "estatus_etiqueta": ("Estatus Etiqueta", lambda a: "OFICIAL" if a.estatus_etiqueta == "ETIQUETADO_OFICIAL" else "PENDIENTE", True),
+        "estatus_activo": ("Estatus Operativo", lambda a: a.estatus_activo or "OPERATIVO", True),
+        "descripcion": ("Descripción", lambda a: a.descripcion or "", False),
+        "especificacion": ("Especificación", lambda a: a.especificacion or "", False),
+        "marca": ("Marca", lambda a: a.marca or "", False),
+        "modelo": ("Modelo", lambda a: a.modelo or "", False),
+        "numero_serie": ("Número de Serie", lambda a: a.numero_serie or "", True),
+        "ubicacion": ("Ubicación", lambda a: a.ubicacion.nombre if a.ubicacion else "", False),
+        "categoria": ("Categoría", lambda a: a.categoria.nombre if a.categoria else "", False),
+        "resguardante": ("Resguardante", lambda a: a.resguardante.nombre if a.resguardante else "", False),
+        "origen": ("Fuente (Origen)", lambda a: a.origen or "", True),
+        "condicion_dg": ("Condición D.G.", lambda a: a.condicion_dg or "", True),
+        "condicion_actual": ("Condición Actual (Plantel 3)", lambda a: a.condicion_actual or a.condicion or "Buena 61% - 80%", True),
+        "costo": ("Costo ($ MXN)", lambda a: f"${a.costo:,.2f}" if a.costo is not None else "", True),
+        "created_at": ("Fecha Registro", lambda a: a.created_at.strftime("%Y-%m-%d") if a.created_at else "", True),
+        "observaciones": ("Observaciones / Comentarios", lambda a: a.observaciones or "", False),
+    }
+
+    DEFAULT_KEYS = [
+        "id", "codigo_interno", "codigo_oficial", "estatus_etiqueta", "estatus_activo",
+        "descripcion", "especificacion", "marca", "modelo", "numero_serie",
+        "ubicacion", "categoria", "resguardante", "origen", "condicion_dg",
+        "condicion_actual", "costo", "created_at", "observaciones"
+    ]
+
+    selected_keys = []
+    if columnas:
+        for c in columnas:
+            c_clean = c.strip().lower()
+            if c_clean in AVAILABLE_COLUMNS and c_clean not in selected_keys:
+                selected_keys.append(c_clean)
+    if not selected_keys:
+        selected_keys = DEFAULT_KEYS
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Inventario Activos"
 
-    headers = [
-        "ID",
-        "Código Interno",
-        "Código Oficial (Etiqueta Verde)",
-        "Estatus Etiqueta",
-        "Estatus Operativo",
-        "Descripción",
-        "Especificación",
-        "Marca",
-        "Modelo",
-        "Número de Serie",
-        "Ubicación",
-        "Categoría",
-        "Resguardante",
-        "Fuente (Origen)",
-        "Condición D.G.",
-        "Condición Actual (Plantel 3)",
-        "Fecha Registro",
-        "Observaciones / Comentarios"
-    ]
+    headers = [AVAILABLE_COLUMNS[k][0] for k in selected_keys]
     ws.append(headers)
 
     header_fill = PatternFill(start_color="064E3B", end_color="064E3B", fill_type="solid")
@@ -629,37 +650,15 @@ def export_activos_to_excel(
     left_align = Alignment(horizontal="left", vertical="center")
 
     for a in activos:
-        est_etiq = "OFICIAL" if a.estatus_etiqueta == "ETIQUETADO_OFICIAL" else "PENDIENTE"
-        cond_act = a.condicion_actual or a.condicion or "Buena 61% - 80%"
-        row_data = [
-            a.id,
-            a.codigo_interno,
-            a.codigo_oficial or "",
-            est_etiq,
-            a.estatus_activo or "OPERATIVO",
-            a.descripcion,
-            a.especificacion or "",
-            a.marca or "",
-            a.modelo or "",
-            a.numero_serie or "",
-            a.ubicacion.nombre if a.ubicacion else "",
-            a.categoria.nombre if a.categoria else "",
-            a.resguardante.nombre if a.resguardante else "",
-            a.origen,
-            a.condicion_dg or "",
-            cond_act,
-            a.created_at.strftime("%Y-%m-%d") if a.created_at else "",
-            a.observaciones or ""
-        ]
+        row_data = [AVAILABLE_COLUMNS[k][1](a) for k in selected_keys]
         ws.append(row_data)
 
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
         for idx, cell in enumerate(row):
             cell.border = thin_border
-            if idx in (0, 1, 2, 3, 4, 13, 14, 15, 16):
-                cell.alignment = center_align
-            else:
-                cell.alignment = left_align
+            key = selected_keys[idx]
+            is_center = AVAILABLE_COLUMNS[key][2]
+            cell.alignment = center_align if is_center else left_align
 
     for col in ws.columns:
         col_letter = get_column_letter(col[0].column)

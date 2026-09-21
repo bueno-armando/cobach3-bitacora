@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventario de Activos | COBACH Plantel 3</title>
+  <title>Bienes Muebles COBACH Plantel 3</title>
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   <link rel="apple-touch-icon" href="/assets/favicon.png">
   <!-- Tailwind CSS via CDN -->
@@ -183,7 +183,7 @@
           <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
         </div>
         <div class="flex items-center gap-2">
-          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Inventario COBACH Plantel 3</h1>
+          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Bienes Muebles COBACH Plantel 3</h1>
           <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-700 hidden sm:inline">Chihuahua</span>
         </div>
       </div>
@@ -231,7 +231,7 @@
 
     </div>
 
-    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, CONTROL ADMINISTRATIVO, DIRECCIÓN GENERAL, PENDIENTES) -->
+    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, CONTROL ADMINISTRATIVO, CÓDIGO ETIQUETA (D.G), PENDIENTES) -->
     <nav class="bg-emerald-950/90 border-t border-emerald-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-1.5 py-1">
         <button onclick="setTab('')" id="tab-all" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap bg-white text-emerald-950 shadow-xs">
@@ -243,8 +243,8 @@
         <button onclick="setTab('CONTROL ADMINISTRATIVO')" id="tab-ca" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60" title="Control Administrativo - Etiqueta Genérica D.B.P ($3,001 a $7,900)">
           <i class="fa-solid fa-users-gear mr-1"></i> Control Admin ($3,001 - $7,900)
         </button>
-        <button onclick="setTab('DIRECCION GENERAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60" title="Dirección General - Etiqueta Verde Oficial ($7,901+)">
-          <i class="fa-solid fa-building-columns mr-1"></i> Dirección General ($7,901+)
+        <button onclick="setTab('DIRECCION GENERAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-emerald-100 hover:bg-emerald-800/60" title="Activos con Código de Etiqueta de Dirección General ($7,901+)">
+          <i class="fa-solid fa-building-columns mr-1"></i> Código Etiqueta (D.G)
         </button>
         <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60" title="Activos en espera de etiqueta verde de Bienes Patrimoniales">
           <i class="fa-solid fa-tags mr-1 text-amber-400"></i> Pendientes Etiqueta
@@ -364,7 +364,7 @@
               <th scope="col" class="py-3 px-3 whitespace-nowrap">Núm. Serie</th>
               <th scope="col" class="py-3 px-3">Marca</th>
               <th scope="col" class="py-3 px-3">Modelo</th>
-              <th scope="col" class="py-3 px-4 min-w-[150px]">Comentarios</th>
+              <th scope="col" class="py-3 px-4 min-w-[160px]">Ubicación</th>
               <th scope="col" class="py-3 px-3 text-center min-w-[240px]">Acciones</th>
             </tr>
           </thead>
@@ -502,15 +502,34 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block font-semibold text-slate-700 uppercase mb-1">Código Interno (Opcional, se autogenera)</label>
-            <input type="text" id="form-codigo-interno" placeholder="Ej. PL3-GTO-0128" class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono">
-            <span class="text-[10px] text-slate-400">Si se deja vacío, el sistema calculará el siguiente número consecutivo.</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+          <!-- Aviso de Código Interno Automático (Modo Registro) -->
+          <div id="container-codigo-auto" class="bg-emerald-50/80 border border-emerald-300/80 rounded-xl p-3 flex items-start gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 text-xs shadow-xs">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+              <span class="block text-xs font-bold text-emerald-950 uppercase tracking-tight">Código Interno Automático</span>
+              <p class="text-[11px] text-emerald-800 leading-tight mt-0.5">
+                Se generará correlativamente según la fuente elegida (<span class="font-mono font-bold" id="auto-code-preview">PL3-GTO-XXXX</span>).
+              </p>
+            </div>
+          </div>
+
+          <!-- Código Interno Readonly (Modo Edición) -->
+          <div id="container-codigo-edit" class="hidden">
+            <label class="block font-semibold text-slate-700 uppercase mb-1 text-xs">Código Interno Asignado</label>
+            <div class="relative">
+              <input type="text" id="form-codigo-interno" readonly class="w-full p-2 bg-slate-100 border border-slate-300 rounded-xl font-mono text-slate-700 font-bold cursor-not-allowed">
+              <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-xs">
+                <i class="fa-solid fa-lock"></i>
+              </span>
+            </div>
+            <span class="text-[10px] text-slate-400">Identificador institucional único no editable.</span>
           </div>
 
           <div>
-            <label class="block font-semibold text-slate-700 uppercase mb-1">Código Oficial (Etiqueta Verde)</label>
+            <label class="block font-semibold text-slate-700 uppercase mb-1 text-xs">Código Oficial (Etiqueta Verde)</label>
             <input type="text" id="form-codigo-oficial" placeholder="Ej. 42100 (Dejar vacío si no tiene)" class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-800">
             <span class="text-[10px] text-slate-400">Solo si ya cuenta físicamente con etiqueta verde pegada.</span>
           </div>
@@ -711,7 +730,7 @@
             <i class="fa-solid fa-print text-emerald-700"></i>
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-bold text-slate-900">Hoja de Etiquetas de Inventario</h3>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">Hoja de Etiquetas de Bienes Muebles</h3>
             <p class="text-[11px] text-slate-500">Plantilla para corte y colocación (10 etiquetas por hoja Carta)</p>
           </div>
         </div>
@@ -842,7 +861,7 @@
 
   <!-- MODAL: EXPORTAR A EXCEL -->
   <div id="modal-export" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
       
       <!-- Standard Modal Header -->
       <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
@@ -852,7 +871,7 @@
           </div>
           <div>
             <h3 class="text-sm sm:text-base font-bold text-slate-900">Exportar a Excel (.xlsx)</h3>
-            <p class="text-[11px] text-slate-500">Descarga reportes listos para auditoría y consulta</p>
+            <p class="text-[11px] text-slate-500">Descarga reportes personalizados para auditoría y consulta</p>
           </div>
         </div>
         <button onclick="closeExportModal()" class="text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 p-1.5 rounded-lg transition text-base">
@@ -861,7 +880,99 @@
       </div>
 
       <!-- Modal Body -->
-      <div class="p-5 sm:p-6 space-y-3 overflow-y-auto flex-1">
+      <div class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+        
+        <!-- Panel Selector de Columnas a Exportar -->
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-200">
+            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="fa-solid fa-table-columns text-emerald-700"></i> Columnas a incluir:
+            </span>
+            <div class="flex items-center gap-2 text-[11px]">
+              <button type="button" onclick="selectAllExportCols(true)" class="text-emerald-700 hover:text-emerald-900 font-bold hover:underline">Todas</button>
+              <span class="text-slate-300">•</span>
+              <button type="button" onclick="selectDefaultExportCols()" class="text-slate-600 hover:text-slate-800 font-bold hover:underline">Predeterminadas</button>
+              <span class="text-slate-300">•</span>
+              <button type="button" onclick="selectAllExportCols(false)" class="text-red-600 hover:text-red-800 font-medium hover:underline">Ninguna</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-2 text-[11px] text-slate-700">
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="codigo_interno" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Cód. Interno</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="codigo_oficial" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Cód. Oficial (D.G)</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="descripcion" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Descripción</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="especificacion" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Especificación</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="marca" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Marca</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="modelo" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Modelo</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="numero_serie" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Número de Serie</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="ubicacion" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 font-semibold text-emerald-950">
+              <span>Ubicación</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="categoria" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Categoría</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="resguardante" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Resguardante</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="origen" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Fuente (Origen)</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="condicion_dg" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Condición D.G.</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="condicion_actual" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Condición Actual</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="costo" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Costo ($ MXN)</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="estatus_activo" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Estatus Operativo</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="estatus_etiqueta" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Estatus Etiqueta</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="created_at" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Fecha Registro</span>
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="observaciones" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span>Observaciones</span>
+            </label>
+          </div>
+        </div>
+
         <!-- Opción 1: Vista / Filtro actual (si hay filtros) -->
         <div id="export-opt-filtered" class="p-3.5 border-2 border-emerald-500 bg-emerald-50/50 rounded-xl hover:bg-emerald-50 transition cursor-pointer btn-pop" onclick="downloadExcelFiltered()">
           <div class="flex items-center justify-between">
@@ -884,8 +995,8 @@
             <div class="flex items-center gap-3">
               <i class="fa-solid fa-database text-slate-600 text-base"></i>
               <div>
-                <h4 class="text-xs font-bold text-slate-800">Exportar Inventario Completo</h4>
-                <p class="text-[11px] text-slate-500">Descarga los 1,406 activos de todas las áreas (GASTO, C.A., Central, Auditorio)</p>
+                <h4 class="text-xs font-bold text-slate-800">Exportar Todos los Bienes Muebles</h4>
+                <p class="text-[11px] text-slate-500">Descarga los 1,406 activos del plantel con las columnas seleccionadas</p>
               </div>
             </div>
             <span class="text-xs font-bold text-slate-600 flex items-center gap-1">

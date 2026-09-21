@@ -158,6 +158,7 @@ def export_excel(
     estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo"),
     ids: Optional[str] = Query(None, description="Lista de IDs separados por coma para selección"),
     scope: Optional[str] = Query(None, description="Nombre descriptivo del ámbito (ej. GASTO, SELECCION)"),
+    columnas: Optional[str] = Query(None, description="Lista de columnas separadas por comas a incluir"),
     db: Session = Depends(get_db)
 ):
     id_list = None
@@ -166,6 +167,8 @@ def export_excel(
             id_list = [int(x.strip()) for x in ids.split(",") if x.strip().isdigit()]
         except Exception:
             id_list = None
+
+    columnas_list = [c.strip() for c in columnas.split(",") if c.strip()] if columnas and columnas.strip() else None
 
     excel_stream = crud.export_activos_to_excel(
         db=db,
@@ -176,12 +179,13 @@ def export_excel(
         resguardante_id=resguardante_id,
         estatus_etiqueta=estatus_etiqueta,
         estatus_activo=estatus_activo,
-        ids=id_list
+        ids=id_list,
+        columnas=columnas_list
     )
 
     date_str = datetime.date.today().strftime("%Y-%m-%d")
     scope_suffix = f"_{scope.strip().upper()}" if scope and scope.strip() else (f"_{origen.strip().upper()}" if origen else "")
-    filename = f"Inventario_COBACH3{scope_suffix}_{date_str}.xlsx"
+    filename = f"BienesMuebles_COBACH3{scope_suffix}_{date_str}.xlsx"
 
     return StreamingResponse(
         excel_stream,

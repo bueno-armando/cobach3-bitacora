@@ -69,9 +69,15 @@ def test_photo_shielding():
         assert a1.es_foto_personalizada is True
 
     finally:
-        # Clean up
+        # Clean up DB records and physical test files
+        import os, glob
         client.delete(f"/api/activos/{a1.id}/imagen")
         client.delete(f"/api/activos/{a2.id}/imagen")
+        for f in glob.glob("uploads/activo_*"):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
         db.close()
 
 if __name__ == "__main__":

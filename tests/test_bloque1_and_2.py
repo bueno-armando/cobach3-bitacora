@@ -71,6 +71,17 @@ def test_auto_code_generation_and_export():
         header_row_all = [cell.value for cell in ws_all[1]]
         assert len(header_row_all) == 19, f"Expected 19 columns, got {len(header_row_all)}"
 
+        # 5. Test filtrado por condicion física
+        res_cond_exc = client.get("/api/activos?condicion=Excelente", headers=headers)
+        assert res_cond_exc.status_code == 200
+        data_exc = res_cond_exc.json()
+        assert data_exc["total"] == 13, f"Expected 13 excelentes, got {data_exc['total']}"
+
+        res_cond_pes = client.get("/api/activos?condicion=Pésima", headers=headers)
+        assert res_cond_pes.status_code == 200
+        data_pes = res_cond_pes.json()
+        assert data_pes["total"] == 106, f"Expected 106 pesimas, got {data_pes['total']}"
+
     finally:
         # Limpieza estricta e incondicional de los elementos de prueba
         if created_ids:

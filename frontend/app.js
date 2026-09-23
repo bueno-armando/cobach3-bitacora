@@ -6,6 +6,7 @@ const state = {
   ubicacion_id: '',
   categoria_id: '',
   estatus_activo: '',
+  condicion: '',
   page: 1,
   limit: 50,
   totalPages: 1,
@@ -321,6 +322,7 @@ async function loadActivos() {
   if (state.q.trim()) params.append('q', state.q.trim());
   if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
   if (state.categoria_id) params.append('categoria_id', state.categoria_id);
+  if (state.condicion) params.append('condicion', state.condicion);
   if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
 
   if (state.tab === 'GASTO') {
@@ -710,7 +712,8 @@ function applyFilters() {
   state.q = document.getElementById('search-input').value;
   state.ubicacion_id = document.getElementById('filter-ubicacion').value;
   state.categoria_id = document.getElementById('filter-categoria').value;
-  state.estatus_activo = document.getElementById('filter-estatus-operativo').value;
+  state.condicion = document.getElementById('filter-condicion')?.value || '';
+  state.estatus_activo = document.getElementById('filter-estatus-operativo')?.value || '';
   state.page = 1;
 
   const clearBtn = document.getElementById('clear-search-btn');
@@ -730,11 +733,13 @@ function resetAllFilters() {
   document.getElementById('search-input').value = '';
   document.getElementById('filter-ubicacion').value = '';
   document.getElementById('filter-categoria').value = '';
-  document.getElementById('filter-estatus-operativo').value = '';
+  if (document.getElementById('filter-condicion')) document.getElementById('filter-condicion').value = '';
+  if (document.getElementById('filter-estatus-operativo')) document.getElementById('filter-estatus-operativo').value = '';
   document.getElementById('clear-search-btn').classList.add('hidden');
   state.q = '';
   state.ubicacion_id = '';
   state.categoria_id = '';
+  state.condicion = '';
   state.estatus_activo = '';
   state.page = 1;
   clearSelection();
@@ -1394,6 +1399,7 @@ async function selectAllFilteredActivos() {
     if (state.q) params.append('q', state.q);
     if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
     if (state.categoria_id) params.append('categoria_id', state.categoria_id);
+    if (state.condicion) params.append('condicion', state.condicion);
     if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
     params.append('page', '1');
     params.append('limit', '2500');
@@ -1850,6 +1856,7 @@ function openExportModal() {
     (state.q && state.q.trim()) || 
     state.ubicacion_id || 
     state.categoria_id || 
+    state.condicion ||
     state.estatus_activo
   );
 
@@ -1857,6 +1864,7 @@ function openExportModal() {
     optFiltered.classList.remove('hidden');
     let filterLabel = state.tab ? `Sección: ${state.tab}` : '';
     if (state.q && state.q.trim()) filterLabel += (filterLabel ? ' + ' : '') + `"${state.q.trim()}"`;
+    if (state.condicion) filterLabel += (filterLabel ? ' + ' : '') + `Condición: ${state.condicion}`;
     if (state.tab === 'PENDIENTES') filterLabel += ' (Pendientes)';
 
     filteredTitle.textContent = `Exportar Vista Filtrada (${(state.totalItems || 0).toLocaleString()} activos)`;
@@ -1935,6 +1943,7 @@ function downloadExcelFiltered() {
 
   if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
   if (state.categoria_id) params.append('categoria_id', state.categoria_id);
+  if (state.condicion) params.append('condicion', state.condicion);
   if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
 
   const cols = getSelectedExportCols();

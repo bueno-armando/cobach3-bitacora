@@ -116,6 +116,7 @@ def list_activos(
     resguardante_id: Optional[int] = Query(None, description="Filtrar por ID de resguardante"),
     estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus etiqueta: PENDIENTE_ETIQUETA, ETIQUETADO_OFICIAL"),
     estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo: OPERATIVO, EN_DESUSO, EN_REPARACION, BAJA"),
+    condicion: Optional[str] = Query(None, description="Filtrar por condición física: Excelente, Buena, Mala, Pésima"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=2500),
     current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
@@ -130,6 +131,7 @@ def list_activos(
         resguardante_id=resguardante_id,
         estatus_etiqueta=estatus_etiqueta,
         estatus_activo=estatus_activo,
+        condicion=condicion,
         page=page,
         limit=limit
     )
@@ -274,6 +276,7 @@ def export_excel(
     resguardante_id: Optional[int] = Query(None, description="Filtrar por resguardante"),
     estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus etiqueta"),
     estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo"),
+    condicion: Optional[str] = Query(None, description="Filtrar por condición física"),
     ids: Optional[str] = Query(None, description="Lista de IDs separados por coma para selección"),
     scope: Optional[str] = Query(None, description="Nombre descriptivo del ámbito (ej. GASTO, SELECCION)"),
     columnas: Optional[str] = Query(None, description="Lista de columnas separadas por comas a incluir"),
@@ -299,6 +302,7 @@ def export_excel(
         resguardante_id=resguardante_id,
         estatus_etiqueta=estatus_etiqueta,
         estatus_activo=estatus_activo,
+        condicion=condicion,
         ids=id_list,
         columnas=columnas_list
     )

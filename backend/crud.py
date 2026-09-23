@@ -29,6 +29,7 @@ def get_activos(
     resguardante_id: Optional[int] = None,
     estatus_etiqueta: Optional[str] = None,
     estatus_activo: Optional[str] = None,
+    condicion: Optional[str] = None,
     page: int = 1,
     limit: int = 50
 ) -> Dict[str, Any]:
@@ -50,6 +51,26 @@ def get_activos(
             query = query.filter(Activo.estatus_activo.in_(["OPERATIVO", "ACTIVO"]))
         else:
             query = query.filter(Activo.estatus_activo == est_up)
+
+    if condicion and condicion.strip():
+        c_str = condicion.strip()
+        if c_str.lower() in ("pesima", "pésima"):
+            query = query.filter(
+                or_(
+                    Activo.condicion_actual.ilike("%Pésima%"),
+                    Activo.condicion_actual.ilike("%Pesima%"),
+                    Activo.condicion.ilike("%Pésima%"),
+                    Activo.condicion.ilike("%Pesima%")
+                )
+            )
+        else:
+            term_cond = f"%{c_str}%"
+            query = query.filter(
+                or_(
+                    Activo.condicion_actual.ilike(term_cond),
+                    Activo.condicion.ilike(term_cond)
+                )
+            )
 
     if ubicacion_id:
         query = query.filter(Activo.ubicacion_id == ubicacion_id)
@@ -572,6 +593,7 @@ def export_activos_to_excel(
     resguardante_id: Optional[int] = None,
     estatus_etiqueta: Optional[str] = None,
     estatus_activo: Optional[str] = None,
+    condicion: Optional[str] = None,
     ids: Optional[List[int]] = None,
     columnas: Optional[List[str]] = None
 ) -> io.BytesIO:
@@ -594,6 +616,25 @@ def export_activos_to_excel(
                 query = query.filter(Activo.estatus_activo.in_(["OPERATIVO", "ACTIVO"]))
             else:
                 query = query.filter(Activo.estatus_activo == est_up)
+        if condicion and condicion.strip():
+            c_str = condicion.strip()
+            if c_str.lower() in ("pesima", "pésima"):
+                query = query.filter(
+                    or_(
+                        Activo.condicion_actual.ilike("%Pésima%"),
+                        Activo.condicion_actual.ilike("%Pesima%"),
+                        Activo.condicion.ilike("%Pésima%"),
+                        Activo.condicion.ilike("%Pesima%")
+                    )
+                )
+            else:
+                term_cond = f"%{c_str}%"
+                query = query.filter(
+                    or_(
+                        Activo.condicion_actual.ilike(term_cond),
+                        Activo.condicion.ilike(term_cond)
+                    )
+                )
         if ubicacion_id:
             query = query.filter(Activo.ubicacion_id == ubicacion_id)
         if categoria_id:

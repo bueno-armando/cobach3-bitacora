@@ -326,16 +326,16 @@
           </select>
 
           <select 
-            id="filter-estatus-operativo" 
+            id="filter-condicion" 
             onchange="applyFilters()" 
             class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 font-medium"
-            title="Filtrar por estado físico del activo"
+            title="Filtrar por condición física del activo"
           >
-            <option value="">Estado: Todos</option>
-            <option value="OPERATIVO">🟢 Operativo</option>
-            <option value="EN_DESUSO">🔴 En Desuso</option>
-            <option value="EN_REPARACION">🟡 En Reparación</option>
-            <option value="BAJA">⚪ Baja Oficial</option>
+            <option value="">Condición: Todas</option>
+            <option value="Excelente">✨ Excelente (81% - 100%)</option>
+            <option value="Buena">🟢 Buena (61% - 80%)</option>
+            <option value="Mala">🟡 Mala (41% - 60%)</option>
+            <option value="Pésima">🔴 Pésima (0% - 40%)</option>
           </select>
 
           <!-- Botón Restablecer / Limpiar Filtros -->
@@ -1359,6 +1359,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=8"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

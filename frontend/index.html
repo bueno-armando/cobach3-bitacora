@@ -177,12 +177,12 @@
   <header class="header-solid text-white shadow-md sticky top-0 z-40 border-b border-emerald-950">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Lado Izquierdo: Logo, Título e Indicador de Rol -->
-      <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
-        <!-- Logo y Título -->
+      <!-- Lado Izquierdo: Título Arriba, Indicador de Rol Abajo -->
+      <div class="flex flex-col gap-1.5">
+        <!-- Logo y Leyenda -->
         <div class="flex items-center space-x-2.5">
-          <div class="bg-white rounded-xl p-1 shadow-sm flex items-center justify-center h-9 w-9 flex-shrink-0 border border-emerald-600/30 ring-1 ring-emerald-500/20">
-            <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
+          <div class="bg-white rounded-xl p-1 shadow-sm flex items-center justify-center h-8 w-8 flex-shrink-0 border border-emerald-600/30 ring-1 ring-emerald-500/20">
+            <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón Plantel 3" class="h-6 w-auto object-contain">
           </div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-base font-bold tracking-tight text-white whitespace-nowrap">Bienes Muebles COBACH Plantel 3</h1>
@@ -190,8 +190,8 @@
           </div>
         </div>
 
-        <!-- Indicador de Usuario y Rol (A la izquierda, con texto completo visible) -->
-        <div id="user-profile-capsule" class="hidden flex items-center gap-2 px-2.5 py-1 bg-emerald-950/80 border border-emerald-800/80 rounded-xl shadow-xs">
+        <!-- Indicador de Rol (Abajo de la leyenda "Bienes Muebles COBACH Plantel 3") -->
+        <div id="user-profile-capsule" class="hidden flex items-center gap-2 px-2.5 py-0.5 bg-emerald-950/80 border border-emerald-800/80 rounded-xl shadow-xs self-start">
           <div class="flex items-center gap-1.5">
             <span id="user-role-badge" class="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600 whitespace-nowrap">ADMIN</span>
             <span id="user-name-display" class="text-xs font-semibold text-emerald-100 whitespace-nowrap" title="Usuario conectado">Administrador</span>
@@ -206,46 +206,49 @@
         </div>
       </div>
 
-      <!-- Métricas Rápidas (KPIs Integrados en Cápsula Compacta) -->
-      <div class="bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-1 flex items-center gap-2 sm:gap-3 text-xs">
-        <span class="text-slate-300">Total: <strong id="stat-total" class="text-white font-bold">-</strong></span>
-        <span class="text-emerald-700">•</span>
-        <span class="text-emerald-300">Oficiales: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
-        <span class="text-emerald-700">•</span>
-        <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
-      </div>
+      <!-- Lado Derecho: Indicador de Activos Arriba, Botones Abajo -->
+      <div class="flex flex-col items-start sm:items-end gap-1.5">
+        <!-- Indicador de Activos Totales, Oficiales y Pendientes -->
+        <div class="bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-0.5 flex items-center gap-2 sm:gap-3 text-xs">
+          <span class="text-slate-300">Total: <strong id="stat-total" class="text-white font-bold">-</strong></span>
+          <span class="text-emerald-700">•</span>
+          <span class="text-emerald-300">Oficiales: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
+          <span class="text-emerald-700">•</span>
+          <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
+        </div>
 
-      <!-- Acciones Principales (Cola y Exportar a la derecha) -->
-      <div class="flex items-center gap-1.5 sm:gap-2">
-        <button 
-          onclick="openCreateModal()" 
-          id="btn-nuevo-activo"
-          class="btn-pop px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
-        >
-          <i class="fa-solid fa-plus text-xs"></i>
-          <span>Nuevo</span>
-        </button>
+        <!-- Botones de Cola y Exportar (Abajo del indicador de activos) -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <button 
+            onclick="openCreateModal()" 
+            id="btn-nuevo-activo"
+            class="btn-pop px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
+          >
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Nuevo</span>
+          </button>
 
-        <button 
-          onclick="openPrintQueueModal()" 
-          id="btn-open-queue"
-          class="btn-pop px-3 py-1.5 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
-          title="Ver activos en la cola de impresión"
-        >
-          <i class="fa-solid fa-tags text-emerald-400"></i>
-          <span class="hidden md:inline">Cola</span>
-          <span id="queue-badge" class="bg-emerald-600 text-emerald-100 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">0</span>
-        </button>
+          <button 
+            onclick="openPrintQueueModal()" 
+            id="btn-open-queue"
+            class="btn-pop px-3 py-1 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
+            title="Ver activos en la cola de impresión"
+          >
+            <i class="fa-solid fa-tags text-emerald-400"></i>
+            <span class="hidden md:inline">Cola</span>
+            <span id="queue-badge" class="bg-emerald-600 text-emerald-100 text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">0</span>
+          </button>
 
-        <button 
-          onclick="openExportModal()" 
-          id="btn-open-export"
-          class="btn-pop px-3 py-1.5 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
-          title="Exportar inventario a Excel (.xlsx)"
-        >
-          <i class="fa-solid fa-file-excel text-emerald-400"></i>
-          <span class="hidden md:inline">Exportar</span>
-        </button>
+          <button 
+            onclick="openExportModal()" 
+            id="btn-open-export"
+            class="btn-pop px-3 py-1 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
+            title="Exportar inventario a Excel (.xlsx)"
+          >
+            <i class="fa-solid fa-file-excel text-emerald-400"></i>
+            <span class="hidden md:inline">Exportar</span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -1356,6 +1359,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=7"></script>
+  <script src="/app.js?v=8"></script>
 </body>
 </html>

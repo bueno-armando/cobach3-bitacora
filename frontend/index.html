@@ -177,14 +177,32 @@
   <header class="header-solid text-white shadow-md sticky top-0 z-40 border-b border-emerald-950">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Logo y Título -->
-      <div class="flex items-center space-x-2.5">
-        <div class="bg-white rounded-xl p-1 shadow-sm flex items-center justify-center h-9 w-9 flex-shrink-0 border border-emerald-600/30 ring-1 ring-emerald-500/20">
-          <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
+      <!-- Lado Izquierdo: Logo, Título e Indicador de Rol -->
+      <div class="flex items-center gap-3 sm:gap-4 flex-wrap">
+        <!-- Logo y Título -->
+        <div class="flex items-center space-x-2.5">
+          <div class="bg-white rounded-xl p-1 shadow-sm flex items-center justify-center h-9 w-9 flex-shrink-0 border border-emerald-600/30 ring-1 ring-emerald-500/20">
+            <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón Plantel 3" class="h-7 w-auto object-contain">
+          </div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight text-white whitespace-nowrap">Bienes Muebles COBACH Plantel 3</h1>
+            <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-700 hidden sm:inline">Chihuahua</span>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Bienes Muebles COBACH Plantel 3</h1>
-          <span class="text-[10px] font-bold uppercase tracking-wider bg-emerald-950 px-1.5 py-0.5 rounded text-emerald-300 border border-emerald-700 hidden sm:inline">Chihuahua</span>
+
+        <!-- Indicador de Usuario y Rol (A la izquierda, con texto completo visible) -->
+        <div id="user-profile-capsule" class="hidden flex items-center gap-2 px-2.5 py-1 bg-emerald-950/80 border border-emerald-800/80 rounded-xl shadow-xs">
+          <div class="flex items-center gap-1.5">
+            <span id="user-role-badge" class="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600 whitespace-nowrap">ADMIN</span>
+            <span id="user-name-display" class="text-xs font-semibold text-emerald-100 whitespace-nowrap" title="Usuario conectado">Administrador</span>
+          </div>
+          <button 
+            onclick="logout()" 
+            class="btn-pop-sm w-6 h-6 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-800/80 flex items-center justify-center transition text-xs" 
+            title="Cerrar sesión / Cambiar de cuenta"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
         </div>
       </div>
 
@@ -197,8 +215,17 @@
         <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
       </div>
 
-      <!-- Acciones Principales -->
+      <!-- Acciones Principales (Cola y Exportar a la derecha) -->
       <div class="flex items-center gap-1.5 sm:gap-2">
+        <button 
+          onclick="openCreateModal()" 
+          id="btn-nuevo-activo"
+          class="btn-pop px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
+        >
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Nuevo</span>
+        </button>
+
         <button 
           onclick="openPrintQueueModal()" 
           id="btn-open-queue"
@@ -219,30 +246,6 @@
           <i class="fa-solid fa-file-excel text-emerald-400"></i>
           <span class="hidden md:inline">Exportar</span>
         </button>
-
-        <button 
-          onclick="openCreateModal()" 
-          id="btn-nuevo-activo"
-          class="btn-pop px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 ml-0.5"
-        >
-          <i class="fa-solid fa-plus text-xs"></i>
-          <span>Nuevo</span>
-        </button>
-
-        <!-- Indicador de Usuario y Rol -->
-        <div id="user-profile-capsule" class="hidden flex items-center gap-2 pl-2 border-l border-emerald-800/80">
-          <div class="flex items-center gap-1.5">
-            <span id="user-role-badge" class="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600">ADMIN</span>
-            <span id="user-name-display" class="text-xs font-semibold text-emerald-100 hidden lg:inline max-w-[140px] truncate" title="Usuario conectado">Administrador</span>
-          </div>
-          <button 
-            onclick="logout()" 
-            class="btn-pop-sm w-7 h-7 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-800/80 flex items-center justify-center transition text-xs" 
-            title="Cerrar sesión / Cambiar de cuenta"
-          >
-            <i class="fa-solid fa-right-from-bracket"></i>
-          </button>
-        </div>
       </div>
 
     </div>
@@ -1353,6 +1356,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=6"></script>
+  <script src="/app.js?v=7"></script>
 </body>
 </html>

@@ -175,13 +175,13 @@ function applyRolePermissionsUI() {
 
     if (user.rol === 'admin') {
       roleBadge.textContent = 'ADMIN';
-      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600';
+      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600 whitespace-nowrap';
     } else if (user.rol === 'resguardo') {
       roleBadge.textContent = 'RESGUARDO';
-      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-blue-700 text-blue-100 border border-blue-600';
+      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-blue-700 text-blue-100 border border-blue-600 whitespace-nowrap';
     } else {
       roleBadge.textContent = 'CONSULTA';
-      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-purple-700 text-purple-100 border border-purple-600';
+      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-purple-700 text-purple-100 border border-purple-600 whitespace-nowrap';
     }
   }
 

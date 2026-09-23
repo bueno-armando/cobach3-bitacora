@@ -7,8 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
+from backend.database import get_db, engine, SessionLocal
+from backend.models import Base, Usuario
 import backend.crud as crud
+from backend.auth import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+    require_roles,
+    require_roles_flexible,
+    seed_default_users
+)
 from backend.schemas import (
     PaginatedActivosResponse,
     ActivoDetail,
@@ -17,7 +27,11 @@ from backend.schemas import (
     CambiarEstatusRequest,
     AsignarEtiquetaRequest,
     CatalogosResponse,
-    ImagenUploadResponse
+    ImagenUploadResponse,
+    LoginRequest,
+    UserResponse,
+    TokenResponse,
+    ActualizarCondicionRequest
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +41,7 @@ os.makedirs(UPLOADS_DIR, exist_ok=True)
 app = FastAPI(
     title="Sistema de Inventario - COBACH Plantel 3",
     description="API para control, consulta y gestión del ciclo de vida de los activos del Plantel 3.",
-    version="1.2.0"
+    version="1.3.0"
 )
 
 # Servir uploads de imágenes
@@ -43,6 +57,56 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def on_startup():
+    """Garantiza la creación de tablas (incluyendo usuarios) y siembra cuentas iniciales."""
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_default_users(db)
+    finally:
+        db.close()
+
+
+# ==========================================
+# RUTAS DE AUTENTICACIÓN
+# ==========================================
+
+@app.post("/api/auth/login", response_model=TokenResponse, summary="Iniciar sesión y obtener token JWT")
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    """Valida credenciales de usuario y retorna token Bearer JWT con los datos de rol."""
+    username_clean = data.username.strip().lower()
+    user = db.query(Usuario).filter(Usuario.username == username_clean).first()
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Esta cuenta de usuario ha sido desactivada"
+        )
+
+    token = create_access_token(data={"sub": user.username, "rol": user.rol})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": user
+    }
+
+
+@app.get("/api/auth/me", response_model=UserResponse, summary="Obtener perfil del usuario autenticado")
+def get_me(current_user: Usuario = Depends(get_current_user)):
+    """Retorna los datos y rol de la sesión actual."""
+    return current_user
+
+
+# ==========================================
+# RUTAS DE ACTIVOS Y BIENES MUEBLES
+# ==========================================
+
 @app.get("/api/activos", response_model=PaginatedActivosResponse, summary="Listar y buscar activos con filtros")
 def list_activos(
     q: Optional[str] = Query(None, description="Búsqueda por código, serie, descripción, marca o modelo"),
@@ -54,6 +118,7 @@ def list_activos(
     estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo: OPERATIVO, EN_DESUSO, EN_REPARACION, BAJA"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=2500),
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
     db: Session = Depends(get_db)
 ):
     return crud.get_activos(
@@ -71,32 +136,74 @@ def list_activos(
 
 
 @app.post("/api/activos", response_model=ActivoDetail, status_code=status.HTTP_201_CREATED, summary="Registrar nuevo activo")
-def create_activo(data: ActivoCreate, db: Session = Depends(get_db)):
+def create_activo(
+    data: ActivoCreate,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
+    db: Session = Depends(get_db)
+):
     return crud.create_activo(db=db, data=data)
 
 
 @app.get("/api/activos/{activo_id}", response_model=ActivoDetail, summary="Detalle completo de un activo")
-def get_activo_detail(activo_id: int, db: Session = Depends(get_db)):
+def get_activo_detail(
+    activo_id: int,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
+    db: Session = Depends(get_db)
+):
     return crud.get_activo_by_id(db=db, activo_id=activo_id)
 
 
 @app.put("/api/activos/{activo_id}", response_model=ActivoDetail, summary="Modificar datos de un activo existente")
-def update_activo(activo_id: int, data: ActivoUpdate, db: Session = Depends(get_db)):
+def update_activo(
+    activo_id: int,
+    data: ActivoUpdate,
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
     return crud.update_activo(db=db, activo_id=activo_id, data=data)
 
 
 @app.delete("/api/activos/{activo_id}", summary="Eliminar un activo")
-def delete_activo(activo_id: int, db: Session = Depends(get_db)):
+def delete_activo(
+    activo_id: int,
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
     return crud.delete_activo(db=db, activo_id=activo_id)
 
 
 @app.patch("/api/activos/{activo_id}/estatus-operativo", response_model=ActivoDetail, summary="Cambiar estado físico/operativo (Operativo, En Desuso, etc.)")
-def change_operational_status(activo_id: int, data: CambiarEstatusRequest, db: Session = Depends(get_db)):
+def change_operational_status(
+    activo_id: int,
+    data: CambiarEstatusRequest,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
+    db: Session = Depends(get_db)
+):
     return crud.cambiar_estatus_operativo(db=db, activo_id=activo_id, data=data)
 
 
+@app.patch("/api/activos/{activo_id}/condicion", response_model=ActivoDetail, summary="Reportar condición física y/o estatus operativo de resguardo")
+def update_activo_condicion(
+    activo_id: int,
+    data: ActualizarCondicionRequest,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
+    db: Session = Depends(get_db)
+):
+    return crud.update_condicion_resguardo(
+        db=db,
+        activo_id=activo_id,
+        data=data,
+        usuario_nombre=current_user.nombre_completo or current_user.username
+    )
+
+
 @app.post("/api/activos/{activo_id}/asignar-etiqueta", response_model=ActivoDetail, summary="Asignar código oficial de etiqueta verde")
-def asignar_etiqueta(activo_id: int, data: AsignarEtiquetaRequest, db: Session = Depends(get_db)):
+def asignar_etiqueta(
+    activo_id: int,
+    data: AsignarEtiquetaRequest,
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
     return crud.asignar_etiqueta_oficial(db=db, activo_id=activo_id, data=data)
 
 
@@ -106,6 +213,7 @@ async def upload_activo_imagen(
     file: UploadFile = File(...),
     propagate_model: bool = Form(False),
     override_custom: bool = Form(False),
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
     db: Session = Depends(get_db)
 ):
     filename = file.filename or "imagen.jpg"
@@ -133,17 +241,27 @@ async def upload_activo_imagen(
 
 
 @app.delete("/api/activos/{activo_id}/imagen", summary="Eliminar imagen asignada al activo")
-def delete_activo_imagen(activo_id: int, db: Session = Depends(get_db)):
+def delete_activo_imagen(
+    activo_id: int,
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
     return crud.delete_activo_imagen(db=db, activo_id=activo_id)
 
 
 @app.get("/api/catalogos", response_model=CatalogosResponse, summary="Obtener catálogos de ubicaciones, categorías y resguardantes")
-def get_catalogos(db: Session = Depends(get_db)):
+def get_catalogos(
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
+    db: Session = Depends(get_db)
+):
     return crud.get_catalogos(db=db)
 
 
 @app.get("/api/stats", summary="Estadísticas generales del inventario")
-def get_stats(db: Session = Depends(get_db)):
+def get_stats(
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
+    db: Session = Depends(get_db)
+):
     return crud.get_dashboard_stats(db=db)
 
 
@@ -159,6 +277,8 @@ def export_excel(
     ids: Optional[str] = Query(None, description="Lista de IDs separados por coma para selección"),
     scope: Optional[str] = Query(None, description="Nombre descriptivo del ámbito (ej. GASTO, SELECCION)"),
     columnas: Optional[str] = Query(None, description="Lista de columnas separadas por comas a incluir"),
+    token: Optional[str] = Query(None, description="Token JWT para descargas directas"),
+    current_user: Usuario = Depends(require_roles_flexible(["admin", "resguardo", "consulta"])),
     db: Session = Depends(get_db)
 ):
     id_list = None

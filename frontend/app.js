@@ -1,5 +1,6 @@
 // Estado global de la aplicación
 const state = {
+  user: null, // Objeto Usuario de la sesión actual ({ id, username, nombre_completo, rol, activo })
   tab: '', // '' (Todos), 'GASTO', 'C.A.', 'PENDIENTES', 'CENTRAL'
   q: '',
   ubicacion_id: '',
@@ -19,20 +20,232 @@ const state = {
   currentPrintItems: []  // Lista de activos expandida para la hoja de etiquetas
 };
 
-// Inicialización
-document.addEventListener('DOMContentLoaded', async () => {
-  loadQueueFromStorage();
+// ==========================================
+// AUTENTICACIÓN Y ROLES
+// ==========================================
+const TOKEN_KEY = 'cobach3_jwt';
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+function setToken(token) {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+async function authFetch(url, options = {}) {
+  const token = getToken();
+  const headers = new Headers(options.headers || {});
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  options.headers = headers;
+
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    setToken(null);
+    state.user = null;
+    openLoginModal();
+    throw new Error('Sesión no autorizada o expirada');
+  }
+  return res;
+}
+
+function openLoginModal() {
+  const modal = document.getElementById('modal-login');
+  if (modal) {
+    modal.classList.remove('hidden');
+    document.getElementById('login-error')?.classList.add('hidden');
+  }
+}
+
+function closeLoginModal() {
+  const modal = document.getElementById('modal-login');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+function togglePasswordVisibility() {
+  const pwdInput = document.getElementById('login-password');
+  const icon = document.getElementById('password-toggle-icon');
+  if (!pwdInput) return;
+  if (pwdInput.type === 'password') {
+    pwdInput.type = 'text';
+    icon.className = 'fa-solid fa-eye-slash';
+  } else {
+    pwdInput.type = 'password';
+    icon.className = 'fa-solid fa-eye';
+  }
+}
+
+async function submitLogin(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const usernameInput = document.getElementById('login-username');
+  const passwordInput = document.getElementById('login-password');
+  const errorDiv = document.getElementById('login-error');
+  const errorMsg = document.getElementById('login-error-msg');
+  const btnSubmit = document.getElementById('btn-login-submit');
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!username || !password) {
+    errorDiv.classList.remove('hidden');
+    errorMsg.textContent = 'Por favor ingresa usuario y contraseña.';
+    return;
+  }
+
+  errorDiv.classList.add('hidden');
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Verificando...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Credenciales incorrectas');
+    }
+
+    const data = await res.json();
+    setToken(data.access_token);
+    state.user = data.user;
+
+    closeLoginModal();
+    applyRolePermissionsUI();
+    showToast(`Bienvenido, ${data.user.nombre_completo || data.user.username}`);
+
+    await initApp();
+  } catch (err) {
+    errorDiv.classList.remove('hidden');
+    errorMsg.textContent = err.message || 'Error de conexión o credenciales incorrectas';
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión';
+  }
+}
+
+function quickLogin(rol) {
+  const credentials = {
+    admin: { user: 'admin', pass: 'Cobach3#Admin' },
+    resguardo: { user: 'resguardo', pass: 'Cobach3#Resguardo' },
+    consulta: { user: 'consulta', pass: 'Cobach3#Consulta' }
+  };
+  const cred = credentials[rol];
+  if (!cred) return;
+  document.getElementById('login-username').value = cred.user;
+  document.getElementById('login-password').value = cred.pass;
+  submitLogin();
+}
+
+function logout() {
+  setToken(null);
+  state.user = null;
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('user-profile-capsule')?.classList.add('hidden');
+  openLoginModal();
+  showToast('Has cerrado sesión correctamente');
+}
+
+function applyRolePermissionsUI() {
+  const user = state.user;
+  if (!user) {
+    document.getElementById('user-profile-capsule')?.classList.add('hidden');
+    return;
+  }
+
+  // Actualizar cápsula de perfil en cabecera
+  const capsule = document.getElementById('user-profile-capsule');
+  const roleBadge = document.getElementById('user-role-badge');
+  const nameDisplay = document.getElementById('user-name-display');
+
+  if (capsule && roleBadge && nameDisplay) {
+    capsule.classList.remove('hidden');
+    nameDisplay.textContent = user.nombre_completo || user.username;
+
+    if (user.rol === 'admin') {
+      roleBadge.textContent = 'ADMIN';
+      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600';
+    } else if (user.rol === 'resguardo') {
+      roleBadge.textContent = 'RESGUARDO';
+      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-blue-700 text-blue-100 border border-blue-600';
+    } else {
+      roleBadge.textContent = 'CONSULTA';
+      roleBadge.className = 'px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-purple-700 text-purple-100 border border-purple-600';
+    }
+  }
+
+  // Botón Nuevo Activo: visible para Admin y Resguardo, oculto para Consulta
+  const btnNuevo = document.getElementById('btn-nuevo-activo');
+  if (btnNuevo) {
+    if (user.rol === 'consulta') {
+      btnNuevo.classList.add('hidden');
+    } else {
+      btnNuevo.classList.remove('hidden');
+    }
+  }
+}
+
+async function checkSession() {
+  const token = getToken();
+  if (!token) {
+    openLoginModal();
+    return false;
+  }
+  try {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+      setToken(null);
+      state.user = null;
+      openLoginModal();
+      return false;
+    }
+    const user = await res.json();
+    state.user = user;
+    applyRolePermissionsUI();
+    closeLoginModal();
+    return true;
+  } catch (err) {
+    setToken(null);
+    state.user = null;
+    openLoginModal();
+    return false;
+  }
+}
+
+async function initApp() {
   await Promise.all([
     loadStats(),
     loadCatalogos()
   ]);
   await loadActivos();
+}
+
+// Inicialización de la aplicación
+document.addEventListener('DOMContentLoaded', async () => {
+  loadQueueFromStorage();
+  const isAuthenticated = await checkSession();
+  if (isAuthenticated) {
+    await initApp();
+  }
 });
 
 // Cargar estadísticas KPI
 async function loadStats() {
   try {
-    const res = await fetch('/api/stats');
+    const res = await authFetch('/api/stats');
     if (!res.ok) return;
     const stats = await res.json();
     document.getElementById('stat-total').textContent = stats.total_activos.toLocaleString();
@@ -46,7 +259,7 @@ async function loadStats() {
 // Cargar catálogos y rellenar selects y datalists
 async function loadCatalogos() {
   try {
-    const res = await fetch('/api/catalogos');
+    const res = await authFetch('/api/catalogos');
     if (!res.ok) return;
     const data = await res.json();
     state.rawCatalogos = data;
@@ -121,7 +334,7 @@ async function loadActivos() {
   }
 
   try {
-    const res = await fetch(`/api/activos?${params.toString()}`);
+    const res = await authFetch(`/api/activos?${params.toString()}`);
     if (!res.ok) throw new Error('Error en la petición');
     const data = await res.json();
 
@@ -162,6 +375,7 @@ function renderTable(items) {
 
   tbody.innerHTML = items.map(item => {
     const isChecked = state.selectedIds.has(item.id) ? 'checked' : '';
+    const rol = state.user ? state.user.rol : 'consulta';
 
     // Columna 2: Miniatura interactiva de foto
     let fotoHtml = '';
@@ -180,15 +394,23 @@ function renderTable(items) {
         </div>
       `;
     } else {
-      fotoHtml = `
-        <button 
-          onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
-          class="w-8 h-8 rounded-lg border border-dashed border-slate-300 text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition flex items-center justify-center text-xs"
-          title="Subir fotografía para este activo"
-        >
-          <i class="fa-solid fa-camera"></i>
-        </button>
-      `;
+      if (rol === 'admin' || rol === 'resguardo') {
+        fotoHtml = `
+          <button 
+            onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
+            class="w-8 h-8 rounded-lg border border-dashed border-slate-300 text-slate-300 hover:text-emerald-600 hover:border-emerald-500 hover:bg-emerald-50 transition flex items-center justify-center text-xs"
+            title="Subir fotografía para este activo"
+          >
+            <i class="fa-solid fa-camera"></i>
+          </button>
+        `;
+      } else {
+        fotoHtml = `
+          <span class="w-8 h-8 rounded-lg border border-slate-200 text-slate-300 flex items-center justify-center text-xs" title="Sin fotografía">
+            <i class="fa-solid fa-image"></i>
+          </span>
+        `;
+      }
     }
 
     // Columna 3: Número de inventario (oficial si existe, o código interno si pendiente)
@@ -311,20 +533,34 @@ function renderTable(items) {
             >
               <i class="fa-solid fa-circle-info"></i>
             </button>
-            <button 
-              onclick="openEditModal(${item.id})"
-              title="Editar activo"
-              class="btn-pop-sm w-8 h-8 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-xs shadow-xs"
-            >
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            <button 
-              onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
-              title="Subir o cambiar fotografía"
-              class="btn-pop-sm w-8 h-8 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900 border border-purple-200/80 flex items-center justify-center transition text-xs shadow-xs"
-            >
-              <i class="fa-solid fa-camera"></i>
-            </button>
+
+            ${rol === 'admin' ? `
+              <button 
+                onclick="openEditModal(${item.id})"
+                title="Editar activo"
+                class="btn-pop-sm w-8 h-8 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-xs shadow-xs"
+              >
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+            ` : ''}
+
+            ${(rol === 'admin' || rol === 'resguardo') ? `
+              <button 
+                onclick="openCondicionModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.condicion_actual || '')}', '${escapeHtml(item.estatus_activo || '')}', '${escapeHtml(item.ubicacion || '')}')"
+                title="Actualizar Condición / Reportar Desuso"
+                class="btn-pop-sm w-8 h-8 rounded-lg text-teal-700 bg-teal-50 hover:bg-teal-100 hover:text-teal-900 border border-teal-200/80 flex items-center justify-center transition text-xs shadow-xs"
+              >
+                <i class="fa-solid fa-clipboard-check"></i>
+              </button>
+              <button 
+                onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
+                title="Subir o cambiar fotografía"
+                class="btn-pop-sm w-8 h-8 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900 border border-purple-200/80 flex items-center justify-center transition text-xs shadow-xs"
+              >
+                <i class="fa-solid fa-camera"></i>
+              </button>
+            ` : ''}
+
             <button 
               onclick="addSingleToQueue(${item.id})"
               title="Agregar a Cola de Impresión"
@@ -339,14 +575,18 @@ function renderTable(items) {
             >
               <i class="fa-solid fa-print"></i>
             </button>
-            ${btnAsignarTag}
-            <button 
-              onclick="openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')"
-              title="Eliminar activo"
-              class="btn-pop-sm w-8 h-8 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200/80 flex items-center justify-center transition text-xs shadow-xs"
-            >
-              <i class="fa-solid fa-trash"></i>
-            </button>
+
+            ${rol === 'admin' ? btnAsignarTag : ''}
+
+            ${rol === 'admin' ? `
+              <button 
+                onclick="openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')"
+                title="Eliminar activo"
+                class="btn-pop-sm w-8 h-8 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200/80 flex items-center justify-center transition text-xs shadow-xs"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            ` : ''}
           </div>
         </td>
       </tr>
@@ -607,7 +847,7 @@ function openCreateModal() {
 
 async function openEditModal(id) {
   try {
-    const res = await fetch(`/api/activos/${id}`);
+    const res = await authFetch(`/api/activos/${id}`);
     if (!res.ok) throw new Error('No se pudo cargar el activo');
     const a = await res.json();
 
@@ -685,7 +925,7 @@ async function submitAssetForm(e) {
     const url = isEdit ? `/api/activos/${id}` : '/api/activos';
     const method = isEdit ? 'PUT' : 'POST';
 
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -725,7 +965,7 @@ async function confirmDelete() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(`/api/activos/${state.deletingId}`, { method: 'DELETE' });
+    const res = await authFetch(`/api/activos/${state.deletingId}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Error al eliminar');
     closeDeleteModal();
     state.selectedIds.delete(state.deletingId);
@@ -759,9 +999,10 @@ async function openDetailModal(id) {
   modal.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/activos/${id}`);
+    const res = await authFetch(`/api/activos/${id}`);
     if (!res.ok) throw new Error('Error al cargar detalle');
     const a = await res.json();
+    const rol = state.user ? state.user.rol : 'consulta';
 
     title.textContent = a.descripcion;
     badge.textContent = `${a.origen} · ${a.codigo_interno}`;
@@ -777,21 +1018,51 @@ async function openDetailModal(id) {
       a.estatus_activo === 'EN_REPARACION' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
     }`;
 
-    actionsContainer.innerHTML = `
-      <button onclick="addSingleToQueue(${a.id})" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
+    let detailButtons = `
+      <button onclick="addSingleToQueue(${a.id})" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5">
         <i class="fa-solid fa-folder-plus"></i> + Cola
       </button>
-      <button onclick="closeDetailModal(); openEditModal(${a.id})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
-        <i class="fa-solid fa-pen-to-square"></i> Editar
-      </button>
-      <button onclick="closeDetailModal(); openPrintSingle(${a.id})" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-xl text-xs transition flex items-center gap-1.5">
+      <button onclick="closeDetailModal(); openPrintSingle(${a.id})" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5">
         <i class="fa-solid fa-print"></i> Imprimir Etiqueta
       </button>
     `;
 
+    if (rol === 'admin' || rol === 'resguardo') {
+      detailButtons += `
+        <button onclick="closeDetailModal(); openCondicionModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.condicion_actual || '')}', '${escapeHtml(a.estatus_activo || '')}', '${escapeHtml(a.ubicacion || '')}')" class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5">
+          <i class="fa-solid fa-clipboard-check"></i> Condición / Desuso
+        </button>
+      `;
+    }
+
+    if (rol === 'admin') {
+      detailButtons += `
+        <button onclick="closeDetailModal(); openEditModal(${a.id})" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5">
+          <i class="fa-solid fa-pen-to-square"></i> Editar
+        </button>
+      `;
+    }
+    actionsContainer.innerHTML = detailButtons;
+
     // 1. Tarjeta de Fotografía
     let photoBlock = '';
     if (a.imagen_url) {
+      let photoActions = '';
+      if (rol === 'admin' || rol === 'resguardo') {
+        photoActions += `
+          <button onclick="openImageUploadModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.modelo || '')}')" class="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
+            <i class="fa-solid fa-camera"></i> Cambiar Foto
+          </button>
+        `;
+      }
+      if (rol === 'admin') {
+        photoActions += `
+          <button onclick="removeActivoPhoto(${a.id})" class="px-2.5 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg text-[11px] font-medium transition flex items-center gap-1">
+            <i class="fa-solid fa-trash"></i> Quitar
+          </button>
+        `;
+      }
+
       photoBlock = `
         <div class="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
           <img 
@@ -810,14 +1081,7 @@ async function openDetailModal(id) {
               }
             </div>
             <p class="text-[11px] text-slate-500">Haz clic en la imagen para ampliarla en alta resolución.</p>
-            <div class="flex items-center gap-2 pt-1">
-              <button onclick="openImageUploadModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.modelo || '')}')" class="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-bold transition flex items-center gap-1">
-                <i class="fa-solid fa-camera"></i> Cambiar Foto
-              </button>
-              <button onclick="removeActivoPhoto(${a.id})" class="px-2.5 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg text-[11px] font-medium transition flex items-center gap-1">
-                <i class="fa-solid fa-trash"></i> Quitar
-              </button>
-            </div>
+            ${photoActions ? `<div class="flex items-center gap-2 pt-1">${photoActions}</div>` : ''}
           </div>
         </div>
       `;
@@ -833,9 +1097,11 @@ async function openDetailModal(id) {
               <p class="text-[11px] text-slate-400">Puedes tomar o subir una fotografía para documentar este activo o su modelo.</p>
             </div>
           </div>
-          <button onclick="openImageUploadModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.modelo || '')}')" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs whitespace-nowrap">
-            <i class="fa-solid fa-camera"></i> Subir Foto
-          </button>
+          ${(rol === 'admin' || rol === 'resguardo') ? `
+            <button onclick="openImageUploadModal(${a.id}, '${escapeHtml(a.descripcion)}', '${escapeHtml(a.modelo || '')}')" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs whitespace-nowrap">
+              <i class="fa-solid fa-camera"></i> Subir Foto
+            </button>
+          ` : ''}
         </div>
       `;
     }
@@ -1005,7 +1271,7 @@ async function submitTag(e) {
   btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Guardando...';
 
   try {
-    const res = await fetch(`/api/activos/${activoId}/asignar-etiqueta`, {
+    const res = await authFetch(`/api/activos/${activoId}/asignar-etiqueta`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1076,7 +1342,7 @@ async function addSingleToQueue(id) {
   try {
     let activo = (state.currentPrintItems || []).find(a => a.id === id);
     if (!activo) {
-      const res = await fetch(`/api/activos/${id}`);
+      const res = await authFetch(`/api/activos/${id}`);
       if (!res.ok) throw new Error('No se pudo obtener el activo');
       activo = await res.json();
     }
@@ -1106,7 +1372,7 @@ async function addSelectedToQueue() {
         existing.copies = (existing.copies || 1) + 1;
         return Promise.resolve(existing);
       }
-      return fetch(`/api/activos/${id}`).then(r => r.json()).then(activo => {
+      return authFetch(`/api/activos/${id}`).then(r => r.json()).then(activo => {
         state.printQueue.set(id, { ...activo, copies: 1 });
       });
     });
@@ -1132,7 +1398,7 @@ async function selectAllFilteredActivos() {
     params.append('page', '1');
     params.append('limit', '2500');
 
-    const res = await fetch(`/api/activos?${params.toString()}`);
+    const res = await authFetch(`/api/activos?${params.toString()}`);
     if (!res.ok) throw new Error('Error al cargar activos');
     const data = await res.json();
     data.items.forEach(item => state.selectedIds.add(item.id));
@@ -1262,7 +1528,7 @@ function changeBorderStyle(style) {
 // -------------------------------------------------------------
 async function openPrintSingle(id) {
   try {
-    const res = await fetch(`/api/activos/${id}`);
+    const res = await authFetch(`/api/activos/${id}`);
     if (!res.ok) throw new Error('No se pudo obtener el activo');
     const activo = await res.json();
     state.basePrintItems = [activo];
@@ -1283,7 +1549,7 @@ async function openBulkPrintModal() {
     showToast(`Preparando hoja para ${state.selectedIds.size} activo(s)...`);
     const ids = Array.from(state.selectedIds);
     // Obtener detalles de todos los activos seleccionados
-    const promises = ids.map(id => fetch(`/api/activos/${id}`).then(r => r.json()));
+    const promises = ids.map(id => authFetch(`/api/activos/${id}`).then(r => r.json()));
     const items = await Promise.all(promises);
     state.basePrintItems = items;
     state.printCopies = 1;
@@ -1616,12 +1882,37 @@ function closeExportModal() {
   if (modal) modal.classList.add('hidden');
 }
 
+async function downloadExcelUrl(url) {
+  try {
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error('Error al generar el archivo Excel');
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    let filename = 'BienesMuebles_COBACH3.xlsx';
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) filename = match[1];
+
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(blobUrl);
+    showToast('Archivo Excel descargado correctamente');
+  } catch (err) {
+    console.error('Error descargando Excel:', err);
+    showToast('Error al descargar el archivo Excel', true);
+  }
+}
+
 function downloadExcelAll() {
   closeExportModal();
   showToast('Generando reporte completo de inventario...');
   const cols = getSelectedExportCols();
   const url = cols ? `/api/export/excel?columnas=${encodeURIComponent(cols)}` : '/api/export/excel';
-  window.location.href = url;
+  downloadExcelUrl(url);
 }
 
 function downloadExcelFiltered() {
@@ -1650,7 +1941,7 @@ function downloadExcelFiltered() {
   if (cols) params.append('columnas', cols);
 
   showToast(`Generando reporte filtrado (${state.totalItems || 0} activos)...`);
-  window.location.href = '/api/export/excel?' + params.toString();
+  downloadExcelUrl('/api/export/excel?' + params.toString());
 }
 
 function exportSelectedToExcel() {
@@ -1662,7 +1953,7 @@ function exportSelectedToExcel() {
   const cols = getSelectedExportCols();
   const colParam = cols ? `&columnas=${encodeURIComponent(cols)}` : '';
   showToast(`Descargando ${state.selectedIds.size} activos seleccionados en Excel...`);
-  window.location.href = `/api/export/excel?ids=${ids}&scope=SELECCION${colParam}`;
+  downloadExcelUrl(`/api/export/excel?ids=${ids}&scope=SELECCION${colParam}`);
 }
 
 function exportQueueToExcel() {
@@ -1676,7 +1967,7 @@ function exportQueueToExcel() {
   const cols = getSelectedExportCols();
   const colParam = cols ? `&columnas=${encodeURIComponent(cols)}` : '';
   showToast(`Descargando ${queueSize} activos de la cola en Excel...`);
-  window.location.href = `/api/export/excel?ids=${ids}&scope=COLA${colParam}`;
+  downloadExcelUrl(`/api/export/excel?ids=${ids}&scope=COLA${colParam}`);
 }
 
 // -------------------------------------------------------------
@@ -1780,7 +2071,7 @@ async function submitImageUpload(e) {
   btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Subiendo...';
 
   try {
-    const res = await fetch(`/api/activos/${activoId}/imagen`, {
+    const res = await authFetch(`/api/activos/${activoId}/imagen`, {
       method: 'POST',
       body: formData
     });
@@ -1810,7 +2101,7 @@ async function removeActivoPhoto(activoId) {
   if (!confirm('¿Deseas quitar la fotografía asignada a este activo?')) return;
 
   try {
-    const res = await fetch(`/api/activos/${activoId}/imagen`, {
+    const res = await authFetch(`/api/activos/${activoId}/imagen`, {
       method: 'DELETE'
     });
     if (!res.ok) throw new Error('Error al eliminar la foto');
@@ -1822,3 +2113,90 @@ async function removeActivoPhoto(activoId) {
     showToast(err.message, true);
   }
 }
+
+// -------------------------------------------------------------
+// MODAL: ACTUALIZAR CONDICIÓN / REPORTAR DESUSO (RESGUARDO / DOCENTES)
+// -------------------------------------------------------------
+function openCondicionModal(id, desc, condActual, estatusActivo, ubicacion) {
+  document.getElementById('condicion-activo-id').value = id;
+  document.getElementById('condicion-codigo-badge').textContent = `Activo #${id}`;
+  document.getElementById('condicion-activo-desc').textContent = desc;
+  document.getElementById('condicion-activo-ubi-text').textContent = ubicacion || 'Sin ubicación física asignada';
+
+  const statusBadge = document.getElementById('condicion-status-badge');
+  statusBadge.textContent = estatusActivo || 'OPERATIVO';
+  statusBadge.className = `text-[10px] font-bold px-1.5 py-0.5 rounded ${
+    estatusActivo === 'EN_DESUSO' ? 'bg-red-100 text-red-800' :
+    estatusActivo === 'EN_REPARACION' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+  }`;
+
+  const selectCond = document.getElementById('select-condicion-actual');
+  if (condActual && selectCond.querySelector(`option[value="${condActual}"]`)) {
+    selectCond.value = condActual;
+  } else {
+    selectCond.value = 'Buena 61% - 80%';
+  }
+
+  document.getElementById('select-nuevo-estatus').value = '';
+  document.getElementById('textarea-condicion-obs').value = '';
+  document.getElementById('condicion-error').classList.add('hidden');
+  document.getElementById('modal-condicion-resguardo').classList.remove('hidden');
+}
+
+function closeCondicionModal() {
+  document.getElementById('modal-condicion-resguardo').classList.add('hidden');
+}
+
+async function submitCondicionResguardo(e) {
+  e.preventDefault();
+  const id = document.getElementById('condicion-activo-id').value;
+  const condicion = document.getElementById('select-condicion-actual').value;
+  const nuevoEstatus = document.getElementById('select-nuevo-estatus').value;
+  const obs = document.getElementById('textarea-condicion-obs').value.trim();
+  const errorDiv = document.getElementById('condicion-error');
+  const btnSubmit = document.getElementById('btn-save-condicion');
+
+  errorDiv.classList.add('hidden');
+  btnSubmit.disabled = true;
+  btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Guardando...';
+
+  try {
+    const payload = {
+      condicion_actual: condicion,
+      observaciones: obs || null
+    };
+    if (nuevoEstatus) {
+      payload.nuevo_estatus = nuevoEstatus;
+    }
+
+    const res = await authFetch(`/api/activos/${id}/condicion`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Error al guardar condición');
+    }
+
+    closeCondicionModal();
+    showToast('Reporte de condición y estatus guardado con éxito');
+    await loadActivos();
+    await loadStats();
+  } catch (err) {
+    errorDiv.classList.remove('hidden');
+    errorDiv.textContent = err.message || 'Error al guardar reporte';
+  } finally {
+    btnSubmit.disabled = false;
+    btnSubmit.innerHTML = '<i class="fa-solid fa-check"></i> Guardar Reporte';
+  }
+}
+
+function switchFromCondicionToPhoto() {
+  const id = document.getElementById('condicion-activo-id').value;
+  const desc = document.getElementById('condicion-activo-desc').textContent;
+  closeCondicionModal();
+  openImageUploadModal(id, desc, '');
+}
+

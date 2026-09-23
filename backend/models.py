@@ -113,3 +113,19 @@ class HistorialEtiqueta(Base):
     def __repr__(self):
         return f"<HistorialEtiqueta Activo:{self.activo_id} -> {self.codigo_oficial_asignado}>"
 
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    nombre_completo = Column(String(150), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    rol = Column(String(20), default="consulta", nullable=False, index=True)  # 'admin', 'resguardo', 'consulta'
+    activo = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<Usuario {self.username} ({self.rol})>"
+

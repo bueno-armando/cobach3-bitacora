@@ -222,11 +222,27 @@
 
         <button 
           onclick="openCreateModal()" 
+          id="btn-nuevo-activo"
           class="btn-pop px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 ml-0.5"
         >
           <i class="fa-solid fa-plus text-xs"></i>
           <span>Nuevo</span>
         </button>
+
+        <!-- Indicador de Usuario y Rol -->
+        <div id="user-profile-capsule" class="hidden flex items-center gap-2 pl-2 border-l border-emerald-800/80">
+          <div class="flex items-center gap-1.5">
+            <span id="user-role-badge" class="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs bg-emerald-700 text-emerald-100 border border-emerald-600">ADMIN</span>
+            <span id="user-name-display" class="text-xs font-semibold text-emerald-100 hidden lg:inline max-w-[140px] truncate" title="Usuario conectado">Administrador</span>
+          </div>
+          <button 
+            onclick="logout()" 
+            class="btn-pop-sm w-7 h-7 rounded-lg text-emerald-300 hover:text-white hover:bg-emerald-800/80 flex items-center justify-center transition text-xs" 
+            title="Cerrar sesión / Cambiar de cuenta"
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -1120,6 +1136,216 @@
     </div>
   </div>
 
+  <!-- MODAL: ACTUALIZAR CONDICIÓN / REPORTAR DESUSO (RESGUARDO / DOCENTES) -->
+  <div id="modal-condicion-resguardo" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center text-sm font-bold">
+            <i class="fa-solid fa-clipboard-check"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Actualizar Condición / Reportar Desuso</h3>
+            <p id="modal-condicion-subtitle" class="text-[11px] text-slate-500">Sustento técnico y reporte de deterioro</p>
+          </div>
+        </div>
+        <button onclick="closeCondicionModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <form id="form-condicion-resguardo" onsubmit="submitCondicionResguardo(event)" class="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+        <input type="hidden" id="condicion-activo-id">
+
+        <!-- Ficha Resumen del Activo -->
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+          <div class="flex items-center justify-between">
+            <span id="condicion-codigo-badge" class="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px]"></span>
+            <span id="condicion-status-badge" class="text-[10px] font-bold px-1.5 py-0.5 rounded"></span>
+          </div>
+          <p id="condicion-activo-desc" class="font-semibold text-slate-800 text-xs"></p>
+          <p id="condicion-activo-ubi" class="text-slate-500 text-[11px] flex items-center gap-1">
+            <i class="fa-solid fa-location-dot text-slate-400"></i> <span id="condicion-activo-ubi-text"></span>
+          </p>
+        </div>
+
+        <!-- Selector de Condición Física -->
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Condición Física Actual</label>
+          <select id="select-condicion-actual" required class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white font-medium">
+            <option value="Excelente 91% - 100%">Excelente (91% - 100% Sin daños ni desgaste)</option>
+            <option value="Buena 61% - 80%">Buena (61% - 80% Operativo con desgaste normal)</option>
+            <option value="Regular 41% - 60%">Regular (41% - 60% Funcional con fallas menores o estética deficiente)</option>
+            <option value="Mala / Chatarra 0% - 40%">Mala / Chatarra (0% - 40% Daño grave, inoperable o irreparable)</option>
+          </select>
+        </div>
+
+        <!-- Selector de Cambio de Estatus Operativo (Desuso / Reparación) -->
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Cambio de Estatus Operativo (Opcional)</label>
+          <select id="select-nuevo-estatus" class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white font-medium">
+            <option value="">-- Conservar estatus actual --</option>
+            <option value="OPERATIVO">OPERATIVO (En servicio activo en aula o laboratorio)</option>
+            <option value="EN_DESUSO">EN_DESUSO (Proponer para baja por daño irreparable u obsolescencia)</option>
+            <option value="EN_REPARACION">EN_REPARACION (Requiere o se encuentra en soporte técnico)</option>
+          </select>
+          <p class="text-[10px] text-slate-400 mt-1">Al marcar <strong>EN_DESUSO</strong>, el encargado de sistemas podrá revisar el bien e iniciar el trámite de baja correspondiente.</p>
+        </div>
+
+        <!-- Observaciones / Motivo técnico -->
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Motivo / Justificación Técnica</label>
+          <textarea 
+            id="textarea-condicion-obs" 
+            rows="3" 
+            placeholder="Describe las fallas observadas, componentes dañados o razón por la cual el equipo se cataloga en este estado..."
+            class="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium"
+          ></textarea>
+        </div>
+
+        <!-- Enlace rápido para subir evidencia fotográfica -->
+        <div class="bg-blue-50/60 border border-blue-200/80 rounded-xl p-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-camera text-blue-600 text-sm"></i>
+            <div>
+              <p class="font-bold text-slate-800 text-[11px]">¿Deseas adjuntar evidencia del daño?</p>
+              <p class="text-[10px] text-slate-500">Puedes tomar o subir una fotografía del equipo</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onclick="switchFromCondicionToPhoto()" 
+            class="btn-pop px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1"
+          >
+            <i class="fa-solid fa-upload"></i> Subir Foto
+          </button>
+        </div>
+
+        <div id="condicion-error" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeCondicionModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-save-condicion" class="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-bold transition shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i> Guardar Reporte
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- MODAL: INICIO DE SESIÓN / CONTROL DE ACCESO -->
+  <div id="modal-login" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col border border-slate-200 animate-in fade-in zoom-in duration-200">
+      
+      <!-- Cabecera Institucional del Login -->
+      <div class="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-950 text-white p-6 text-center relative">
+        <div class="w-16 h-16 bg-white rounded-2xl p-2 mx-auto shadow-md border border-emerald-400/40 flex items-center justify-center mb-3">
+          <img src="/assets/logo_halcon_oficial_emblema.png" alt="Logo Halcón" class="h-12 w-auto object-contain">
+        </div>
+        <h2 class="text-lg font-black tracking-tight">Bienes Muebles COBACH 3</h2>
+        <p class="text-xs text-emerald-200 mt-1">Control de Inventario y Trazabilidad Institucional</p>
+      </div>
+
+      <!-- Formulario de Acceso -->
+      <div class="p-6 space-y-4">
+        <div id="login-error" class="hidden text-xs text-red-700 bg-red-50 p-3 rounded-xl border border-red-200 flex items-center gap-2">
+          <i class="fa-solid fa-triangle-exclamation text-red-500 text-sm flex-shrink-0"></i>
+          <span id="login-error-msg">Credenciales incorrectas</span>
+        </div>
+
+        <form id="form-login" onsubmit="submitLogin(event)" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Usuario</label>
+            <div class="relative">
+              <i class="fa-solid fa-user absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+              <input 
+                type="text" 
+                id="login-username" 
+                required 
+                placeholder="admin, resguardo o consulta" 
+                class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Contraseña</label>
+            <div class="relative">
+              <i class="fa-solid fa-lock absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+              <input 
+                type="password" 
+                id="login-password" 
+                required 
+                placeholder="••••••••••••" 
+                class="w-full pl-9 pr-10 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+              >
+              <button 
+                type="button" 
+                onclick="togglePasswordVisibility()" 
+                class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs p-0.5"
+                title="Mostrar/ocultar contraseña"
+              >
+                <i id="password-toggle-icon" class="fa-solid fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            id="btn-login-submit" 
+            class="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md transition btn-pop flex items-center justify-center gap-2"
+          >
+            <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+          </button>
+        </form>
+
+        <!-- Sección de Accesos Rápidos por Rol -->
+        <div class="pt-4 border-t border-slate-100">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center mb-2.5">
+            Acceso Rápido por Rol
+          </p>
+          <div class="grid grid-cols-3 gap-2">
+            <button 
+              type="button" 
+              onclick="quickLogin('admin')" 
+              class="btn-pop p-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-center flex flex-col items-center gap-1"
+            >
+              <i class="fa-solid fa-shield-halved text-emerald-700 text-sm"></i>
+              <span class="text-[11px] font-bold">Admin</span>
+              <span class="text-[9px] text-emerald-600 leading-none">Sistemas</span>
+            </button>
+
+            <button 
+              type="button" 
+              onclick="quickLogin('resguardo')" 
+              class="btn-pop p-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-900 text-center flex flex-col items-center gap-1"
+            >
+              <i class="fa-solid fa-user-tie text-blue-700 text-sm"></i>
+              <span class="text-[11px] font-bold">Resguardo</span>
+              <span class="text-[9px] text-blue-600 leading-none">Docentes</span>
+            </button>
+
+            <button 
+              type="button" 
+              onclick="quickLogin('consulta')" 
+              class="btn-pop p-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 text-center flex flex-col items-center gap-1"
+            >
+              <i class="fa-solid fa-magnifying-glass text-purple-700 text-sm"></i>
+              <span class="text-[11px] font-bold">Consulta</span>
+              <span class="text-[9px] text-purple-600 leading-none">Auditoría</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-xs font-medium translate-y-20 opacity-0 transition-all duration-300">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
@@ -1127,6 +1353,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=5"></script>
+  <script src="/app.js?v=6"></script>
 </body>
 </html>

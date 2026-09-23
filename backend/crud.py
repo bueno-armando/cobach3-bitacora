@@ -15,7 +15,8 @@ from backend.schemas import (
     ActivoDetail,
     ActivoCreate,
     ActivoUpdate,
-    CambiarEstatusRequest
+    CambiarEstatusRequest,
+    ActualizarCondicionRequest
 )
 
 
@@ -390,6 +391,38 @@ def cambiar_estatus_operativo(db: Session, activo_id: int, data: CambiarEstatusR
 
     if data.motivo:
         nota = f"[Cambio a {activo.estatus_activo}]: {data.motivo.strip()}"
+        activo.observaciones = f"{activo.observaciones}\n{nota}" if activo.observaciones else nota
+
+    db.commit()
+    db.refresh(activo)
+
+    return get_activo_by_id(db, activo.id)
+
+
+def update_condicion_resguardo(
+    db: Session,
+    activo_id: int,
+    data: ActualizarCondicionRequest,
+    usuario_nombre: str = "Resguardo"
+) -> ActivoDetail:
+    """Permite al resguardante o admin reportar condición física y/o cambio de estatus a desuso."""
+    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+    if not activo:
+        raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
+
+    cond_limpia = data.condicion_actual.strip()
+    if not cond_limpia:
+        raise HTTPException(status_code=400, detail="La condición actual no puede estar vacía")
+
+    activo.condicion_actual = cond_limpia
+
+    if data.nuevo_estatus:
+        est_limpio = data.nuevo_estatus.strip().upper()
+        if est_limpio in ("OPERATIVO", "EN_DESUSO", "EN_REPARACION", "BAJA"):
+            activo.estatus_activo = est_limpio
+
+    if data.observaciones and data.observaciones.strip():
+        nota = f"[{usuario_nombre} - Condición: {cond_limpia}]: {data.observaciones.strip()}"
         activo.observaciones = f"{activo.observaciones}\n{nota}" if activo.observaciones else nota
 
     db.commit()

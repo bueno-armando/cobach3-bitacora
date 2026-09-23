@@ -189,3 +189,30 @@ class DashboardStats(BaseModel):
     total_etiquetados: int
     total_pendientes: int
     por_origen: Dict[str, int]
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    nombre_completo: str
+    rol: str
+    activo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class ActualizarCondicionRequest(BaseModel):
+    condicion_actual: str
+    observaciones: Optional[str] = None
+    nuevo_estatus: Optional[str] = None

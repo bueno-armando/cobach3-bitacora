@@ -7,8 +7,15 @@ from sqlalchemy import func
 
 client = TestClient(app)
 
+def get_admin_headers():
+    res = client.post("/api/auth/login", json={"username": "admin", "password": "Cobach3#Admin"})
+    assert res.status_code == 200
+    token = res.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
 def test_api_activos_structure():
-    res = client.get('/api/activos?limit=10')
+    headers = get_admin_headers()
+    res = client.get('/api/activos?limit=10', headers=headers)
     assert res.status_code == 200
     data = res.json()
     assert 'items' in data
@@ -43,10 +50,11 @@ def test_photo_shielding():
     # 1x1 dummy PNG
     fake_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
 
+    headers = get_admin_headers()
     try:
         # Step 1: Upload a custom photo for a1
         files1 = {"file": ("damaged_a1.png", fake_png, "image/png")}
-        res1 = client.post(f"/api/activos/{a1.id}/imagen?propagate_model=false&es_personalizada=true", files=files1)
+        res1 = client.post(f"/api/activos/{a1.id}/imagen?propagate_model=false&es_personalizada=true", files=files1, headers=headers)
         assert res1.status_code == 200
         a1_img = res1.json()["imagen_url"]
 
@@ -56,7 +64,7 @@ def test_photo_shielding():
 
         # Step 2: Upload a generic photo to a2, propagate to model without force_overwrite
         files2 = {"file": ("generic_model.png", fake_png, "image/png")}
-        res2 = client.post(f"/api/activos/{a2.id}/imagen?propagate_model=true&force_overwrite=false&es_personalizada=false", files=files2)
+        res2 = client.post(f"/api/activos/{a2.id}/imagen?propagate_model=true&force_overwrite=false&es_personalizada=false", files=files2, headers=headers)
         assert res2.status_code == 200
 
         db.refresh(a1)
@@ -71,8 +79,8 @@ def test_photo_shielding():
     finally:
         # Clean up DB records and physical test files
         import os, glob
-        client.delete(f"/api/activos/{a1.id}/imagen")
-        client.delete(f"/api/activos/{a2.id}/imagen")
+        client.delete(f"/api/activos/{a1.id}/imagen", headers=headers)
+        client.delete(f"/api/activos/{a2.id}/imagen", headers=headers)
         for f in glob.glob("uploads/activo_*"):
             try:
                 os.remove(f)

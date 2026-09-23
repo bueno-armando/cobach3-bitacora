@@ -1,8 +1,11 @@
-# Sistema de Inventario y Control de Activos — COBACH Plantel 3
+# Sistema de Bienes Muebles y Control de Activos — COBACH Plantel 3
 
-Plataforma web integral de gestión, trazabilidad y control de inventario de bienes patrimoniales para el **Colegio de Bachilleres del Estado de Chihuahua (Plantel 3)**.
+Plataforma web integral de gestión, trazabilidad y control de inventario de bienes muebles patrimoniales para el **Colegio de Bachilleres del Estado de Chihuahua (Plantel 3)**.
 
 Desarrollada para resolver la brecha operativa entre la catalogación externa de la Dirección General de Bienes Patrimoniales (Oficina Central) y las adquisiciones locales del plantel.
+
+> 🌐 **Despliegue Activo en Producción:**  
+> **[https://optimistic-surprise-production-137a.up.railway.app](https://optimistic-surprise-production-137a.up.railway.app)**
 
 ---
 
@@ -16,11 +19,16 @@ En la operación cotidiana del Plantel 3:
 
 ### La Solución Técnica
 * **Modelo Relacional Unificado:** Consolidación de los archivos Excel dispersos en una base de datos relacional (SQLite / PostgreSQL) con catálogos normalizados en 3FN (Ubicaciones, Categorías, Resguardantes).
+* **Control de Accesos Basado en Roles (RBAC) y JWT:**
+  * **`admin`**: Control administrativo y patrimonial total.
+  * **`resguardo`**: Docentes y encargados de laboratorio; pueden dar de alta activos, actualizar condición física, marcar bienes en desuso o reparación y adjuntar fotografías.
+  * **`consulta`**: Modo de solo lectura para auditorías y búsqueda general.
+* **Cuentas Institucionales Compartidas:** Inicialización automática con contraseñas seguras PBKDF2-HMAC-SHA256 y botones de inicio rápido en 1 clic.
 * **Ciclo de Vida de Doble Identificador:**
-  * `codigo_interno`: Identificador único y atómico asignado de inmediato al ingresar el activo al plantel (`PL3-GTO-XXXX`, `PL3-CA-XXXX`, `PL3-DG-XXXXXX`).
+  * `codigo_interno`: Identificador único y atómico asignado de inmediato al ingresar el activo al plantel (`PL3-GTO-XXXX`, `PL3-CA-XXXX`, `PL3-DG-XXXXXX`). Consecutivo automático protegido contra alteración manual.
   * `codigo_oficial`: Número de la etiqueta verde oficial, el cual permanece pendiente (`NULL`) hasta su colocación física.
 * **Módulo de Conciliación de Etiquetas:** Permite al encargado de informática buscar cualquier activo provisional y registrar en segundos el código oficial de la etiqueta verde tan pronto como Dirección General la instala, manteniendo una bitácora histórica inmutable de auditoría (`historial_etiquetas`).
-* **Control de Estado Físico (D.G. vs Local):** Escala oficial de condición física (`Excelente 81% - 100%`, `Buena 61% - 80%`, `Mala 41% - 60%`, `Pésima 0% - 40%`) con comparativa directa de deterioro para justificar trámites de baja patrimonial.
+* **Control y Filtro de Condición Física:** Escala oficial (`Excelente 81% - 100%`, `Buena 61% - 80%`, `Mala 41% - 60%`, `Pésima 0% - 40%`) con selector directo en la barra de búsqueda y comparativa de deterioro para justificar trámites de desincorporación/baja.
 * **Registro Fotográfico de Activos:** Fotografías de alta resolución accesibles directamente desde la vista inicial, con protección inteligente contra sobreescritura de equipos con daños particulares al propagar fotos por modelo.
 * **Impresión de Etiquetas en Hoja Carta (10 por Hoja / 2x5):**
   * Generación al vuelo en el cliente de **Código de Barras (CODE128)**, **Código QR** o **Ambos Códigos emparejados** con el logo institucional del Halcón Plantel 3.
@@ -29,18 +37,7 @@ En la operación cotidiana del Plantel 3:
   * Esquinas cuadradas de 90° optimizadas para corte manual con guillotina o tijeras.
   * Función *"Llenar hoja (10)"* para generar plantillas completas de un activo en un solo clic.
 * **Cola de Impresión Acumulativa (Print Queue):** Permite acumular activos de distintas áreas y mandarlos a impresión conjunta o exportar la selección.
-* **Exportación Institucional a Excel (.xlsx):** Generación nativa en streaming de reportes con filtros activos, inventario completo o cola de impresión.
-
----
-
-## 🛠️ Stack Tecnológico y Portabilidad
-
-* **Backend:** Python 3.10+ / **FastAPI** (asíncrono, tipado estricto con Pydantic, documentación Swagger interactiva).
-* **ORM & Base de Datos:** **SQLAlchemy 2.0** con motor relacional **SQLite** (cero configuración, portabilidad total en un único archivo `inventario.db`; compatible con PostgreSQL/MySQL mediante `DATABASE_URL`).
-* **ETL & Data Processing:** **Pandas**, **OpenPyXL**, **LXML**.
-* **Frontend:** HTML5 semántico, **Tailwind CSS**, FontAwesome, **JsBarcode** (Code 128), **QRCode.js**, Vanilla JS modular moderno.
-* **Operación 100% Offline:** Todas las librerías de estilos, iconos, generadores de códigos y exportadores están empaquetadas localmente, sin dependencia de internet.
-* **Multiplataforma:** Diseñado para desarrollarse en **Linux (Arch Linux)** y desplegarse en servidores o PCs con **Windows / Windows Server**.
+* **Exportación Dinámica a Excel (.xlsx):** Selector interactivo de columnas (hasta 18 campos disponibles con controles "Todas", "Predeterminadas" y "Ninguna"), respetando filtros activos de condición física o selección de cola.
 
 ---
 
@@ -48,6 +45,15 @@ En la operación cotidiana del Plantel 3:
 
 ```mermaid
 erDiagram
+    USUARIOS {
+        int id PK
+        string username UK
+        string nombre_completo
+        string password_hash
+        string rol "admin, resguardo, consulta"
+        boolean activo
+    }
+
     ACTIVOS }|--|| CATEGORIAS : "categorizado en"
     ACTIVOS }|--|| UBICACIONES : "ubicado en"
     ACTIVOS }|--|| RESGUARDANTES : "a cargo de"
@@ -137,22 +143,37 @@ Esto generará una base de datos `inventario.db` lista para interactuar con la p
 
 ---
 
+## 👥 Cuentas Institucionales Predeterminadas
+
+El sistema se inicializa automáticamente con 3 perfiles compartidos para facilitar la operación:
+
+| Rol | Usuario | Contraseña | Perfil y Permisos |
+| :--- | :--- | :--- | :--- |
+| **`admin`** | `admin` | `Cobach3#Admin` | **Administrador:** Control total (altas, ediciones, eliminación permanente, asignación de etiqueta verde oficial, gestión de fotos y reportes). |
+| **`resguardo`** | `resguardo` | `Cobach3#Resguardo` | **Docentes y Encargados:** Registro de nuevos activos (código autogenerado), reporte de desuso/reparación, actualización de condición física y fotos de evidencia. |
+| **`consulta`** | `consulta` | `Cobach3#Consulta` | **Solo Lectura:** Búsqueda, visualización de fichas técnicas, exportación personalizada y cola de impresión. |
+
+---
+
 ## 📋 Endpoints Principales de la API
 
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/api/activos` | Consulta paginada con filtros por texto, origen (`GASTO`, `CONTROL ADMINISTRATIVO`, `DIRECCION GENERAL`), ubicación, categoría y estado físico |
-| `POST` | `/api/activos` | Crear un nuevo activo en el inventario (autogenera código interno según origen) |
-| `GET` | `/api/activos/{id}` | Ficha técnica y administrativa completa de un activo con su historial de etiquetas y foto |
-| `PUT` | `/api/activos/{id}` | Modificar datos técnicos o administrativos del activo |
-| `DELETE` | `/api/activos/{id}` | Eliminar un activo del sistema |
-| `POST` | `/api/activos/{id}/imagen` | Subir fotografía con opción de propagación a modelo y protección de fotos particulares |
-| `DELETE` | `/api/activos/{id}/imagen` | Quitar fotografía de un activo |
-| `PATCH` | `/api/activos/{id}/estatus-operativo` | Actualizar estado físico (`OPERATIVO`, `EN_DESUSO`, `EN_REPARACION`, `BAJA`) |
-| `POST` | `/api/activos/{id}/asignar-etiqueta` | Conciliación y asignación de etiqueta verde oficial con validación de unicidad |
-| `GET` | `/api/export/excel` | Exportación en streaming de activos a formato institucional Excel (`.xlsx`) |
-| `GET` | `/api/catalogos` | Listado de ubicaciones, categorías y resguardantes normalizados |
-| `GET` | `/api/stats` | Indicadores clave (total activos, oficiales vs. pendientes por origen y estado) |
+| Método | Endpoint | Roles Permitidos | Descripción |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Público | Autenticación mediante credenciales y generación de token JWT Bearer (7 días) |
+| `GET` | `/api/auth/me` | Todos | Obtener información y rol del usuario autenticado |
+| `GET` | `/api/activos` | Todos | Consulta paginada con filtros (`q`, `origen`, `ubicacion_id`, `categoria_id`, `condicion`, `estatus_activo`) |
+| `POST` | `/api/activos` | `admin`, `resguardo` | Registrar un nuevo activo (autogenera consecutivo `PL3-...` protegido) |
+| `GET` | `/api/activos/{id}` | Todos | Ficha técnica y administrativa completa del activo con historial y foto |
+| `PUT` | `/api/activos/{id}` | `admin` | Modificar datos técnicos o administrativos del activo |
+| `DELETE` | `/api/activos/{id}` | `admin` | Eliminar definitivamente un activo del sistema |
+| `PATCH` | `/api/activos/{id}/condicion` | `admin`, `resguardo` | Actualizar condición física (`Excelente`, `Buena`, `Mala`, `Pésima`), estatus y justificación técnica |
+| `PATCH` | `/api/activos/{id}/estatus-operativo` | `admin`, `resguardo` | Cambio rápido de estado operativo (`ACTIVO`, `EN_DESUSO`, `EN_REPARACION`, `BAJA`) |
+| `POST` | `/api/activos/{id}/imagen` | `admin`, `resguardo` | Subir fotografía con opción de propagación a modelo y protección de fotos particulares |
+| `DELETE` | `/api/activos/{id}/imagen` | `admin` | Quitar fotografía de un activo |
+| `POST` | `/api/activos/{id}/asignar-etiqueta` | `admin` | Conciliación y asignación de código oficial de etiqueta verde patrimonial |
+| `GET` | `/api/export/excel` | Todos | Exportación dinámica en streaming a `.xlsx` con selector de columnas y filtros de condición |
+| `GET` | `/api/catalogos` | Todos | Listado de ubicaciones, categorías y resguardantes normalizados |
+| `GET` | `/api/stats` | Todos | Indicadores clave (total activos, oficiales vs. pendientes por origen y estado) |
 
 ---
 

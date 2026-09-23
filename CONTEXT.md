@@ -64,11 +64,20 @@ El sistema consolida 4 archivos que se encontraban desconectados en la raíz del
 
 ## 4. Arquitectura de Base de Datos (SQLite + SQLAlchemy)
 
-* **Archivo de base de datos:** `inventario.db` (en raíz del proyecto, excluido de Git por `.gitignore`).
+* **Archivo de base de datos:** `inventario.db` (en raíz del proyecto; versionado mediante `!inventario.db` en `.gitignore` para contener de forma inmediata los 1,406 registros en despliegues como Railway).
 * **ORM:** SQLAlchemy 2.0 (`backend/database.py`, `backend/models.py`).
 
 ### Esquema Relacional:
 ```
+usuarios:
+  - id (INTEGER PK AUTOINCREMENT)
+  - username (VARCHAR(50) UNIQUE NOT NULL)
+  - nombre_completo (VARCHAR(150) NOT NULL)
+  - password_hash (VARCHAR(255) NOT NULL)
+  - rol (VARCHAR(30) NOT NULL: 'admin', 'resguardo', 'consulta')
+  - activo (BOOLEAN DEFAULT TRUE)
+  - created_at, updated_at (TIMESTAMP)
+
 ubicaciones (id, nombre)
 categorias (id, nombre)
 resguardantes (id, nombre)
@@ -77,9 +86,13 @@ activos:
   - id (INTEGER PK AUTOINCREMENT)
   - codigo_interno (VARCHAR(50) UNIQUE NOT NULL)
   - codigo_oficial (VARCHAR(50) UNIQUE NULL)
-  - origen (VARCHAR(30) NOT NULL: 'GASTO', 'C.A.', 'CENTRAL', 'AUDITORIO')
+  - origen (VARCHAR(30) NOT NULL: 'GASTO', 'CONTROL ADMINISTRATIVO', 'DIRECCION GENERAL')
   - estatus_etiqueta (VARCHAR(30): 'PENDIENTE_ETIQUETA', 'ETIQUETADO_OFICIAL')
   - estatus_activo (VARCHAR(50): 'OPERATIVO', 'EN_DESUSO', 'EN_REPARACION', 'BAJA')
+  - condicion_dg (VARCHAR(100) NULL: Condición inicial de Dirección General)
+  - condicion_actual (VARCHAR(100) DEFAULT 'Buena 61% - 80%': Condición física modificable localmente)
+  - imagen_url (VARCHAR(255) NULL: Ruta local de fotografía en /uploads)
+  - es_foto_personalizada (BOOLEAN DEFAULT FALSE: Protege fotos de daños específicos al propagar por modelo)
   - descripcion (VARCHAR(255) NOT NULL)
   - especificacion (TEXT)
   - marca (VARCHAR(100))
@@ -89,7 +102,6 @@ activos:
   - ubicacion_id (FK -> ubicaciones.id)
   - resguardante_id (FK -> resguardantes.id)
   - centro_costo (VARCHAR(100) DEFAULT 'PLANTEL 3')
-  - condicion (VARCHAR(100))
   - costo (FLOAT)
   - donacion_tipo (VARCHAR(100))
   - orden_compra (VARCHAR(100))
@@ -110,47 +122,94 @@ historial_etiquetas:
 
 ---
 
-## 5. API Backend (FastAPI)
+## 5. Sistema de Roles, Autenticación y Control de Accesos (RBAC)
 
-Ubicación del código: [`backend/main.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/backend/main.py) y [`backend/crud.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/backend/crud.py).
+El sistema incorpora control de acceso basado en roles para desacoplar el uso administrativo de la operación docente y la simple consulta auditora:
+
+### Matriz de Roles y Alcance:
+| Rol | Usuarios Objetivo | Permisos Principales | Restricciones de Seguridad |
+|---|---|---|---|
+| **`admin`** | Encargado de Sistemas y Dirección | **Control total**: Altas de bienes, edición completa de cualquier campo, bajas definitivas (`DELETE`), asignación de etiqueta verde oficial, gestión de fotos, exportación e impresión. | Sin restricciones. |
+| **`resguardo`** | Docentes y Encargados de Aulas / Laboratorios | **Operación y sustento técnico**: Consultar inventario, **dar de alta nuevos bienes** (con folio consecutivo autogenerado), **marcar activos en desuso o reparación**, actualizar condición física con justificación técnica (`PATCH /api/activos/{id}/condicion`) y subir fotos de evidencia/daños. | Restringido de borrado permanente (`DELETE`) y de asignar etiqueta verde oficial. |
+| **`consulta`** | Consulta y Auditoría Institucional | **Solo Lectura**: Búsqueda, filtros por condición/ubicación/categoría, visualización de fichas técnicas completas, exportación dinámica a Excel y cola de impresión. | Restringido de altas, ediciones, bajas, cambios de estatus y subida de archivos. |
+
+### Cuentas Sembradas por Defecto:
+Para eliminar la fricción burocrática de crear cuentas individuales por cada docente, se inicializan automáticamente 3 cuentas institucionales compartidas al arrancar la aplicación (`seed_default_users`):
+* `admin` / `Cobach3#Admin`
+* `resguardo` / `Cobach3#Resguardo`
+* `consulta` / `Cobach3#Consulta`
+
+### Seguridad Criptográfica:
+* **Hashing de Contraseñas:** PBKDF2-HMAC-SHA256 con 100,000 iteraciones y salt criptográfico de 16 bytes (módulo nativo estándar `hashlib` y `secrets`, garantizando cero dependencias binarias problemáticas en compilaciones Linux/Windows/Nixpacks).
+* **Tokens de Acceso:** JWT con algoritmo HS256, expiración de 7 días y extracción mediante dependencias FastAPI (`get_current_user`, `require_roles`, `require_roles_flexible`).
+
+---
+
+## 6. API Backend (FastAPI)
+
+Ubicación del código: [`backend/main.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/backend/main.py), [`backend/crud.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/backend/crud.py) y [`backend/auth.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/backend/auth.py).
 
 ### Endpoints REST:
-* `GET /api/activos`: Búsqueda con filtros combinables (`q`, `origen`, `ubicacion_id`, `categoria_id`, `resguardante_id`, `estatus_etiqueta`, `estatus_activo`, `page`, `limit`).
-  * `q` busca simultáneamente en código oficial, código interno, número de serie, descripción, marca, modelo, especificaciones, ubicación, categoría y resguardante.
-* `POST /api/activos`: Registrar un nuevo activo (autogenera código interno si no se envía).
-* `GET /api/activos/{id}`: Detalle completo de un activo con relaciones e historial.
-* `PUT /api/activos/{id}`: Modificación completa de cualquier campo del activo.
-* `DELETE /api/activos/{id}`: Eliminación de un activo.
-* `PATCH /api/activos/{id}/estatus-operativo`: Cambio rápido de estado físico (`OPERATIVO`, `EN_DESUSO`, `EN_REPARACION`, `BAJA`) con motivo opcional.
-* `POST /api/activos/{id}/asignar-etiqueta`: Conciliación de etiqueta verde.
-* `GET /api/catalogos`: Retorna todas las ubicaciones, categorías y resguardantes.
-* `GET /api/stats`: Métricas de activos (totales, por origen, oficiales vs pendientes, operativos vs en desuso).
+* **Autenticación y Sesión:**
+  * `POST /api/auth/login`: Autentica credenciales y emite token JWT con datos del usuario.
+  * `GET /api/auth/me`: Retorna los datos y rol del usuario autenticado en la sesión actual.
+* **Gestión de Bienes Muebles:**
+  * `GET /api/activos`: Consulta paginada con filtros combinables (`q`, `origen`, `ubicacion_id`, `categoria_id`, `resguardante_id`, `estatus_etiqueta`, `estatus_activo`, `condicion`, `page`, `limit`).
+  * `POST /api/activos`: Registrar un nuevo activo (autogenera código interno protegido según procedencia; accesible para `admin` y `resguardo`).
+  * `GET /api/activos/{id}`: Detalle completo de un activo con relaciones, historial de etiquetas y fotografía.
+  * `PUT /api/activos/{id}`: Modificación completa de datos técnicos/administrativos (exclusivo `admin`).
+  * `DELETE /api/activos/{id}`: Eliminación física del activo (exclusivo `admin`).
+  * `PATCH /api/activos/{id}/condicion`: Actualizar condición física (`Excelente`, `Buena`, `Mala`, `Pésima`), estatus operativo (`ACTIVO`, `EN_DESUSO`, `EN_REPARACION`) y observaciones técnicas (para `admin` y `resguardo`).
+  * `PATCH /api/activos/{id}/estatus-operativo`: Cambio rápido de estado operativo.
+  * `POST /api/activos/{id}/asignar-etiqueta`: Asignación oficial de etiqueta verde patrimonial (exclusivo `admin`).
+  * `POST /api/activos/{id}/imagen`: Subida de fotografía con opción de propagación a modelo y protección de fotos particulares.
+  * `DELETE /api/activos/{id}/imagen`: Eliminación de fotografía asociada (exclusivo `admin`).
+* **Catálogos y Reportes:**
+  * `GET /api/catalogos`: Retorna listas normalizadas de ubicaciones, categorías y resguardantes.
+  * `GET /api/stats`: Métricas generales del inventario (totales, oficiales, pendientes, etc.).
+  * `GET /api/export/excel`: Exportación en streaming a `.xlsx` admitiendo parámetros `columnas` (selección dinámica de 18 columnas), `condicion`, filtros de búsqueda y token Bearer flexible.
 
 ---
 
-## 6. Frontend Web (SPA ligera)
+## 7. Frontend Web (SPA ligera)
 
 Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/frontend/index.html) y [`frontend/app.js`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/frontend/app.js).
-* **Tecnologías:** HTML5, Tailwind CSS (CDN), FontAwesome 6, QRCode.js.
-* **Activos Gráficos:**
-  * `frontend/assets/logo_plantel3_halcon_cuerpo_completo.png`: Mascota Halcón oficial del Plantel 3.
-  * `frontend/assets/Logotipo_COBACH.png`: Logotipo general institucional del COBACH.
-* **Características de la UI:**
-  * **Encabezado sólido:** `bg-[#064e3b]`, 100% opaco para evitar traslapes visuales durante el scroll.
-  * **Pestañas:** Todos, GASTO (GTO), C.A., Pendientes de Etiqueta Verde, Oficina Central.
-  * **Buscador:** Búsqueda en vivo y filtros por Ubicación Física, Categoría y Estado Físico.
-  * **CRUD Modals:**
-    * Modal `+ Nuevo Activo` con autocompletado en datalists.
-    * Modal `Editar Activo`.
-    * Modal `Eliminar Activo` con confirmación.
-    * Modal `Detalle del Activo`.
-    * Modal `Imprimir Etiquetas & Cola de Impresión`: Sistema híbrido que combina selección en tabla (con botón para seleccionar todo el filtro actual de hasta 2,500 ítems) y una Cola de Impresión persistente en `localStorage`. Genera hojas de 10 etiquetas por hoja Carta (cuadrícula 2x5, estándar 48 mm de alto) tanto para hojas normales de papel bond (con guías de corte sólidas o punteadas para tijera/guillotina) como para planillas autoadhesivas precortadas (Avery 5163 / Janel). Diseño maximizado con Mascota Halcón y Código lado a lado a ~35mm de altura (80% del área útil) e información en la base. 100% offline.
+* **Tecnologías:** HTML5, Tailwind CSS, FontAwesome 6, JsBarcode (Code 128), QRCode.js.
+* **Arquitectura de Interfaz:**
+  * **Panel Superior (Header) en 2 Niveles Alineados:**
+    * **Lado Izquierdo:**
+      * Nivel 1: Logotipo oficial del Halcón y título institucional **"Bienes Muebles COBACH Plantel 3"** [Chihuahua].
+      * Nivel 2: Cápsula de perfil del usuario (`#user-profile-capsule`) directamente debajo del título, mostrando el badge de rol (`ADMIN`, `RESGUARDO`, `CONSULTA`), el nombre completo institucional íntegro sin recortar (`whitespace-nowrap`) y el botón de salida.
+    * **Lado Derecho:**
+      * Nivel 1: Indicador de métricas rápidas (Total, Oficiales, Pendientes).
+      * Nivel 2: Botones de acción alineados debajo de las métricas: **"+ Nuevo"** (oculto para `consulta`), **"Cola"** e **"Exportar"**.
+  * **Barra de Búsqueda y Filtro de Condición:**
+    * Campo de búsqueda rápida con debounce de 280 ms.
+    * Selectores instantáneos por **Ubicación Física**, **Categoría** y **Condición Física** (`Excelente`, `Buena`, `Mala`, `Pésima`).
+  * **Pestañas Patrimoniales:**
+    * `Todos`, `Gasto ($1 - $3,000)`, `Control Admin ($3,001 - $7,900)`, `Código Etiqueta (D.G)` y `Pendientes Etiqueta`.
+  * **Modales y Flujos Clave:**
+    * **Modal de Login:** Con branding institucional, toggle de contraseña y 3 botones de "Acceso Rápido" en un clic (`Consulta`, `Resguardo`, `Admin`).
+    * **Modal de Condición / Desuso para Docentes:** Permite reportar deterioro, cambiar estado a `EN_DESUSO` o `EN_REPARACION`, registrar justificación técnica y saltar a la captura de fotografía de daño.
+    * **Modal de Exportación Dinámica a Excel:** Permite seleccionar de forma granular hasta 18 columnas mediante casillas de verificación, con botones de control rápido ("Todas", "Predeterminadas", "Ninguna") y descarga autenticada vía Blob.
+    * **Modal de Impresión y Cola:** 10 etiquetas por hoja Carta (cuadrícula 2x5, 48 mm de alto) para papel normal o planillas Avery 5163 / Janel.
 
 ---
 
-## 7. Ejecución y Portabilidad Linux / Windows
+## 8. Despliegue en Producción (Railway)
 
-* **Linux (Arch Linux):**
+* **Plataforma:** Railway con compilación automática mediante Nixpacks.
+* **Archivos de Configuración:**
+  * [`railway.toml`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/railway.toml): Define el constructor `NIXPACKS` y comando `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+  * [`Procfile`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/Procfile): `web: uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}`.
+  * [`main.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/main.py): Punto de entrada raíz que vincula el puerto dinámico asignado por Railway.
+* **URL de Producción:** **`https://optimistic-surprise-production-137a.up.railway.app`**
+
+---
+
+## 9. Ejecución Local y Portabilidad Linux / Windows
+
+* **Linux (Arch Linux / Ubuntu / Debian):**
   ```bash
   ./run.sh
   ```
@@ -162,11 +221,11 @@ Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9
 
 ---
 
-## 8. Seguridad y Portafolio en GitHub
-* Los archivos Excel reales (`*.xls`, `*.xlsx`) y la base de datos real (`*.db`) están en `.gitignore` para cumplir con normativas de protección de datos.
-* Para demostración pública o pruebas de reclutadores, se incluye:
-  ```bash
-  python scripts/seed_sample_data.py
-  ```
-  que crea una base de datos de prueba con registros ficticios.
+## 10. Pruebas Automatizadas y Calidad
+
+El proyecto incluye 3 suites de pruebas automatizadas con pytest:
+* [`tests/test_auth_and_roles.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_auth_and_roles.py): Siembra de usuarios, login, emisión de JWT y verificación estricta de permisos RBAC (401, 403, 201).
+* [`tests/test_bloque1_and_2.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_bloque1_and_2.py): Consecutivos automáticos protegidos, exportación selectiva de columnas a Excel y filtrado por condición física.
+* [`tests/test_photo_and_condition.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_photo_and_condition.py): Subida y propagación de fotos, blindaje de campos y fichas técnicas.
+* **Regla estricta de aislamiento:** Todas las pruebas ejecutan limpieza incondicional en bloques `finally`, garantizando que la base de datos de producción conserve exactamente los 1,406 activos reales sin contaminación de pruebas.
 

@@ -21,7 +21,7 @@ En la operación cotidiana del Plantel 3:
 * **Modelo Relacional Unificado:** Consolidación de los archivos Excel dispersos en una base de datos relacional (SQLite / PostgreSQL) con catálogos normalizados en 3FN (Ubicaciones, Categorías, Resguardantes).
 * **Control de Accesos Basado en Roles (RBAC) y JWT:**
   * **`admin`**: Control administrativo y patrimonial total.
-  * **`resguardo`**: Docentes y encargados de laboratorio; pueden dar de alta activos, actualizar condición física, marcar bienes en desuso o reparación y adjuntar fotografías.
+  * **`resguardo`**: Personal del plantel (resguardantes de aulas, oficinas y laboratorios); pueden dar de alta activos, actualizar condición física, marcar bienes en desuso o reparación y adjuntar fotografías.
   * **`consulta`**: Modo de solo lectura para auditorías y búsqueda general.
 * **Cuentas Institucionales Compartidas:** Inicialización automática con contraseñas seguras PBKDF2-HMAC-SHA256 y botones de inicio rápido en 1 clic.
 * **Ciclo de Vida de Doble Identificador:**
@@ -150,7 +150,7 @@ El sistema se inicializa automáticamente con 3 perfiles compartidos para facili
 | Rol | Usuario | Contraseña | Perfil y Permisos |
 | :--- | :--- | :--- | :--- |
 | **`admin`** | `admin` | `Cobach3#Admin` | **Administrador:** Control total (altas, ediciones, eliminación permanente, asignación de etiqueta verde oficial, gestión de fotos y reportes). |
-| **`resguardo`** | `resguardo` | `Cobach3#Resguardo` | **Docentes y Encargados:** Registro de nuevos activos (código autogenerado), reporte de desuso/reparación, actualización de condición física y fotos de evidencia. |
+| **`resguardo`** | `resguardo` | `Cobach3#Resguardo` | **Personal:** Registro de nuevos activos (código autogenerado), reporte de desuso/reparación, actualización de condición física y fotos de evidencia. |
 | **`consulta`** | `consulta` | `Cobach3#Consulta` | **Solo Lectura:** Búsqueda, visualización de fichas técnicas, exportación personalizada y cola de impresión. |
 
 ---

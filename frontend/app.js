@@ -2124,7 +2124,7 @@ async function removeActivoPhoto(activoId) {
 }
 
 // -------------------------------------------------------------
-// MODAL: ACTUALIZAR CONDICIÓN / REPORTAR DESUSO (RESGUARDO / DOCENTES)
+// MODAL: ACTUALIZAR CONDICIÓN / REPORTAR DESUSO (RESGUARDO / PERSONAL)
 // -------------------------------------------------------------
 function openCondicionModal(id, desc, condActual, estatusActivo, ubicacion) {
   document.getElementById('condicion-activo-id').value = id;

@@ -130,7 +130,7 @@ El sistema incorpora control de acceso basado en roles para desacoplar el uso ad
 | Rol | Usuarios Objetivo | Permisos Principales | Restricciones de Seguridad |
 |---|---|---|---|
 | **`admin`** | Encargado de Sistemas y Dirección | **Control total**: Altas de bienes, edición completa de cualquier campo, bajas definitivas (`DELETE`), asignación de etiqueta verde oficial, gestión de fotos, exportación e impresión. | Sin restricciones. |
-| **`resguardo`** | Docentes y Encargados de Aulas / Laboratorios | **Operación y sustento técnico**: Consultar inventario, **dar de alta nuevos bienes** (con folio consecutivo autogenerado), **marcar activos en desuso o reparación**, actualizar condición física con justificación técnica (`PATCH /api/activos/{id}/condicion`) y subir fotos de evidencia/daños. | Restringido de borrado permanente (`DELETE`) y de asignar etiqueta verde oficial. |
+| **`resguardo`** | Personal (Resguardantes de Aulas / Oficinas / Laboratorios) | **Operación y sustento técnico**: Consultar inventario, **dar de alta nuevos bienes** (con folio consecutivo autogenerado), **marcar activos en desuso o reparación**, actualizar condición física con justificación técnica (`PATCH /api/activos/{id}/condicion`) y subir fotos de evidencia/daños. | Restringido de borrado permanente (`DELETE`) y de asignar etiqueta verde oficial. |
 | **`consulta`** | Consulta y Auditoría Institucional | **Solo Lectura**: Búsqueda, filtros por condición/ubicación/categoría, visualización de fichas técnicas completas, exportación dinámica a Excel y cola de impresión. | Restringido de altas, ediciones, bajas, cambios de estatus y subida de archivos. |
 
 ### Cuentas Sembradas por Defecto:
@@ -190,7 +190,7 @@ Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9
     * `Todos`, `Gasto ($1 - $3,000)`, `Control Admin ($3,001 - $7,900)`, `Código Etiqueta (D.G)` y `Pendientes Etiqueta`.
   * **Modales y Flujos Clave:**
     * **Modal de Login:** Con branding institucional, toggle de contraseña y 3 botones de "Acceso Rápido" en un clic (`Consulta`, `Resguardo`, `Admin`).
-    * **Modal de Condición / Desuso para Docentes:** Permite reportar deterioro, cambiar estado a `EN_DESUSO` o `EN_REPARACION`, registrar justificación técnica y saltar a la captura de fotografía de daño.
+    * **Modal de Condición / Desuso para Personal:** Permite reportar deterioro, cambiar estado a `EN_DESUSO` o `EN_REPARACION`, registrar justificación técnica y saltar a la captura de fotografía de daño.
     * **Modal de Exportación Dinámica a Excel:** Permite seleccionar de forma granular hasta 18 columnas mediante casillas de verificación, con botones de control rápido ("Todas", "Predeterminadas", "Ninguna") y descarga autenticada vía Blob.
     * **Modal de Impresión y Cola:** 10 etiquetas por hoja Carta (cuadrícula 2x5, 48 mm de alto) para papel normal o planillas Avery 5163 / Janel.
 

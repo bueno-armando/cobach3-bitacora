@@ -164,7 +164,7 @@ def seed_default_users(db: Session):
         },
         {
             "username": "resguardo",
-            "nombre_completo": "Docentes y Encargados de Resguardo",
+            "nombre_completo": "Personal",
             "password_plain": "Cobach3#Resguardo",
             "rol": "resguardo"
         },
@@ -186,4 +186,6 @@ def seed_default_users(db: Session):
                 activo=True
             )
             db.add(nuevo)
+        else:
+            user.nombre_completo = item["nombre_completo"]
     db.commit()

@@ -40,6 +40,7 @@ def test_auth_and_role_permissions():
         me_resp_resg = client.get("/api/auth/me", headers=headers_resguardo)
         assert me_resp_resg.status_code == 200
         assert me_resp_resg.json()["rol"] == "resguardo"
+        assert me_resp_resg.json()["nombre_completo"] == "Personal"
 
         # 4. Test unauthenticated request blocked
         res_no_auth = client.get("/api/activos")

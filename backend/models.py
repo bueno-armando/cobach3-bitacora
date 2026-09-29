@@ -75,7 +75,7 @@ class Activo(Base):
     centro_costo = Column(String(100), default="PLANTEL 3", nullable=True)
     condicion = Column(String(100), nullable=True)  # Retrocompatibilidad
     condicion_dg = Column(String(100), nullable=True)  # Condición inicial de Dirección General
-    condicion_actual = Column(String(100), default="Buena 61% - 80%", nullable=True)  # Condición modificable local
+    condicion_actual = Column(String(100), default="Buena", nullable=True)  # Condición modificable local (Excelente, Buena, Mala / Regular, Pésima)
     costo = Column(Float, nullable=True)
     donacion_tipo = Column(String(100), nullable=True)
     orden_compra = Column(String(100), nullable=True)
@@ -93,6 +93,17 @@ class Activo(Base):
     ubicacion = relationship("Ubicacion", back_populates="activos")
     resguardante = relationship("Resguardante", back_populates="activos")
     historial_etiquetas = relationship("HistorialEtiqueta", back_populates="activo", cascade="all, delete-orphan")
+
+    @property
+    def tiene_discrepancia_dg(self) -> bool:
+        """Indica si el activo presenta discrepancia operativa respecto a Dirección General."""
+        if self.origen != "DIRECCION GENERAL":
+            return False
+        if self.estatus_activo in ("EN_DESUSO", "EN_REPARACION", "BAJA"):
+            return True
+        if self.condicion_actual in ("Mala / Regular", "Pésima"):
+            return True
+        return False
 
     def __repr__(self):
         return f"<Activo {self.codigo_interno} - {self.descripcion[:30]}>"

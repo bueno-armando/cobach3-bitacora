@@ -90,7 +90,7 @@ activos:
   - estatus_etiqueta (VARCHAR(30): 'PENDIENTE_ETIQUETA', 'ETIQUETADO_OFICIAL')
   - estatus_activo (VARCHAR(50): 'OPERATIVO', 'EN_DESUSO', 'EN_REPARACION', 'BAJA')
   - condicion_dg (VARCHAR(100) NULL: Condición inicial de Dirección General)
-  - condicion_actual (VARCHAR(100) DEFAULT 'Buena 61% - 80%': Condición física modificable localmente)
+  - condicion_actual (VARCHAR(100) DEFAULT 'Buena': Escala unificada 'Excelente', 'Buena', 'Mala / Regular', 'Pésima')
   - imagen_url (VARCHAR(255) NULL: Ruta local de fotografía en /uploads)
   - es_foto_personalizada (BOOLEAN DEFAULT FALSE: Protege fotos de daños específicos al propagar por modelo)
   - descripcion (VARCHAR(255) NOT NULL)
@@ -154,20 +154,22 @@ Ubicación del código: [`backend/main.py`](file:///home/senorbuen0/ISC/sem9/cob
   * `POST /api/auth/login`: Autentica credenciales y emite token JWT con datos del usuario.
   * `GET /api/auth/me`: Retorna los datos y rol del usuario autenticado en la sesión actual.
 * **Gestión de Bienes Muebles:**
-  * `GET /api/activos`: Consulta paginada con filtros combinables (`q`, `origen`, `ubicacion_id`, `categoria_id`, `resguardante_id`, `estatus_etiqueta`, `estatus_activo`, `condicion`, `page`, `limit`).
+  * `GET /api/activos`: Consulta paginada con filtros combinables (`q`, `origen`, `ubicacion_id`, `categoria_id`, `resguardante_id`, `estatus_etiqueta`, `estatus_activo`, `condicion`, `discrepancias`, `page`, `limit`).
   * `POST /api/activos`: Registrar un nuevo activo (autogenera código interno protegido según procedencia; accesible para `admin` y `resguardo`).
+  * `POST /api/activos/batch`: Consulta masiva y rápida de activos por lista de IDs (`{ids: [1, 2, 3...]}`) en una sola transacción para agilizar la cola de impresión.
   * `GET /api/activos/{id}`: Detalle completo de un activo con relaciones, historial de etiquetas y fotografía.
   * `PUT /api/activos/{id}`: Modificación completa de datos técnicos/administrativos (exclusivo `admin`).
   * `DELETE /api/activos/{id}`: Eliminación física del activo (exclusivo `admin`).
-  * `PATCH /api/activos/{id}/condicion`: Actualizar condición física (`Excelente`, `Buena`, `Mala`, `Pésima`), estatus operativo (`ACTIVO`, `EN_DESUSO`, `EN_REPARACION`) y observaciones técnicas (para `admin` y `resguardo`).
+  * `PATCH /api/activos/{id}/condicion`: Actualizar condición física (`Excelente`, `Buena`, `Mala / Regular`, `Pésima`), estatus operativo (`ACTIVO`, `EN_DESUSO`, `EN_REPARACION`) y observaciones técnicas (para `admin` y `resguardo`).
   * `PATCH /api/activos/{id}/estatus-operativo`: Cambio rápido de estado operativo.
   * `POST /api/activos/{id}/asignar-etiqueta`: Asignación oficial de etiqueta verde patrimonial (exclusivo `admin`).
   * `POST /api/activos/{id}/imagen`: Subida de fotografía con opción de propagación a modelo y protección de fotos particulares.
   * `DELETE /api/activos/{id}/imagen`: Eliminación de fotografía asociada (exclusivo `admin`).
+  * `POST /api/import/excel`: Importación masiva de hojas Excel (.xlsx, .xls y tablas HTML de D.G.) para Gasto, Control Admin y Dirección General con detección de duplicados (exclusivo `admin`).
 * **Catálogos y Reportes:**
   * `GET /api/catalogos`: Retorna listas normalizadas de ubicaciones, categorías y resguardantes.
   * `GET /api/stats`: Métricas generales del inventario (totales, oficiales, pendientes, etc.).
-  * `GET /api/export/excel`: Exportación en streaming a `.xlsx` admitiendo parámetros `columnas` (selección dinámica de 18 columnas), `condicion`, filtros de búsqueda y token Bearer flexible.
+  * `GET /api/export/excel`: Exportación en streaming a `.xlsx` admitiendo parámetros `columnas` (selección dinámica de 18 columnas), `condicion`, `discrepancias`, `scope` y token Bearer flexible. Formateado con ajuste de texto (`wrap_text=True`), anchos de columna acotados (máx. 42) y columna de notas unificada bajo "Comentarios".
 
 ---
 
@@ -223,9 +225,10 @@ Ubicación del código: [`frontend/index.html`](file:///home/senorbuen0/ISC/sem9
 
 ## 10. Pruebas Automatizadas y Calidad
 
-El proyecto incluye 3 suites de pruebas automatizadas con pytest:
+El proyecto incluye 4 suites de pruebas automatizadas con pytest:
 * [`tests/test_auth_and_roles.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_auth_and_roles.py): Siembra de usuarios, login, emisión de JWT y verificación estricta de permisos RBAC (401, 403, 201).
 * [`tests/test_bloque1_and_2.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_bloque1_and_2.py): Consecutivos automáticos protegidos, exportación selectiva de columnas a Excel y filtrado por condición física.
 * [`tests/test_photo_and_condition.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_photo_and_condition.py): Subida y propagación de fotos, blindaje de campos y fichas técnicas.
+* [`tests/test_bloque3_correcciones.py`](file:///home/senorbuen0/ISC/sem9/cobach3-bitacora/tests/test_bloque3_correcciones.py): Verificación de endpoint por lotes `/api/activos/batch`, escala unificada de 4 condiciones, vista de auditoría `discrepancias`, formateo de Excel y RBAC de importador masivo.
 * **Regla estricta de aislamiento:** Todas las pruebas ejecutan limpieza incondicional en bloques `finally`, garantizando que la base de datos de producción conserve exactamente los 1,406 activos reales sin contaminación de pruebas.
 

@@ -55,6 +55,7 @@ class ActivoListItem(BaseModel):
     imagen_url: Optional[str] = None
     es_foto_personalizada: bool = False
     observaciones: Optional[str] = None
+    tiene_discrepancia_dg: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -88,6 +89,7 @@ class ActivoDetail(BaseModel):
     es_foto_personalizada: bool = False
     observaciones: Optional[str] = None
     archivo_fuente: Optional[str] = None
+    tiene_discrepancia_dg: bool = False
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     historial_etiquetas: List[HistorialEtiquetaOut] = []
@@ -125,8 +127,8 @@ class ActivoCreate(BaseModel):
     ubicacion_nombre: Optional[str] = None
     resguardante_id: Optional[int] = None
     resguardante_nombre: Optional[str] = None
-    condicion: Optional[str] = "Buena 61% - 80%"
-    condicion_actual: Optional[str] = "Buena 61% - 80%"
+    condicion: Optional[str] = "Buena"
+    condicion_actual: Optional[str] = "Buena"
     condicion_dg: Optional[str] = None
     costo: Optional[float] = None
     numero_factura: Optional[str] = None
@@ -216,3 +218,18 @@ class ActualizarCondicionRequest(BaseModel):
     condicion_actual: str
     observaciones: Optional[str] = None
     nuevo_estatus: Optional[str] = None
+
+
+class BatchIdsRequest(BaseModel):
+    ids: List[int]
+
+
+class ImportExcelResponse(BaseModel):
+    success: bool
+    origen: str
+    total_leidos: int
+    creados: int
+    omitidos: int
+    errores: List[str] = []
+    mensaje: str
+

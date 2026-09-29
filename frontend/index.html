@@ -248,12 +248,22 @@
             <i class="fa-solid fa-file-excel text-emerald-400"></i>
             <span class="hidden md:inline">Exportar</span>
           </button>
+
+          <button 
+            onclick="openImportModal()" 
+            id="btn-open-import"
+            class="btn-pop px-3 py-1 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 hidden"
+            title="Importar inventario desde archivo Excel (.xlsx / .xls)"
+          >
+            <i class="fa-solid fa-file-import text-emerald-400"></i>
+            <span class="hidden md:inline">Importar</span>
+          </button>
         </div>
       </div>
 
     </div>
 
-    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, CONTROL ADMINISTRATIVO, CÓDIGO ETIQUETA (D.G), PENDIENTES) -->
+    <!-- PESTAÑAS / SECCIONES PRINCIPALES (GASTO, CONTROL ADMINISTRATIVO, CÓDIGO ETIQUETA (D.G), PENDIENTES, DISCREPANCIAS) -->
     <nav class="bg-emerald-950/90 border-t border-emerald-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-1.5 py-1">
         <button onclick="setTab('')" id="tab-all" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap bg-white text-emerald-950 shadow-xs">
@@ -270,6 +280,9 @@
         </button>
         <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-amber-200 hover:bg-emerald-800/60" title="Activos en espera de etiqueta verde de Bienes Patrimoniales">
           <i class="fa-solid fa-tags mr-1 text-amber-400"></i> Pendientes Etiqueta
+        </button>
+        <button onclick="setTab('DISCREPANCIAS')" id="tab-discrepancias" class="tab-btn btn-pop px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap text-amber-300 hover:bg-emerald-800/60" title="Activos con deterioro, en desuso o discrepancias con el registro de Dirección General">
+          <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-400"></i> Discrepancias D.G.
         </button>
       </div>
     </nav>
@@ -332,10 +345,10 @@
             title="Filtrar por condición física del activo"
           >
             <option value="">Condición: Todas</option>
-            <option value="Excelente">✨ Excelente (81% - 100%)</option>
-            <option value="Buena">🟢 Buena (61% - 80%)</option>
-            <option value="Mala">🟡 Mala (41% - 60%)</option>
-            <option value="Pésima">🔴 Pésima (0% - 40%)</option>
+            <option value="Excelente">✨ Excelente</option>
+            <option value="Buena">🟢 Buena</option>
+            <option value="Mala / Regular">🟡 Mala / Regular</option>
+            <option value="Pésima">🔴 Pésima</option>
           </select>
 
           <!-- Botón Restablecer / Limpiar Filtros -->
@@ -489,12 +502,12 @@
           </div>
 
           <div>
-            <label class="block font-semibold text-slate-700 uppercase mb-1">Condición Física (Escala D.G.) *</label>
+            <label class="block font-semibold text-slate-700 uppercase mb-1">Condición Física *</label>
             <select id="form-condicion" required class="w-full p-2 border border-slate-300 rounded-xl bg-slate-50 focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
-              <option value="Excelente 81% - 100%">Excelente (81% - 100%)</option>
-              <option value="Buena 61% - 80%" selected>Buena (61% - 80%) [Predeterminada]</option>
-              <option value="Mala 41% - 60%">Mala (41% - 60%)</option>
-              <option value="Pésima 0% - 40%">Pésima (0% - 40%)</option>
+              <option value="Excelente">Excelente (91% - 100%)</option>
+              <option value="Buena" selected>Buena (61% - 90%) [Predeterminada]</option>
+              <option value="Mala / Regular">Mala / Regular (31% - 60%)</option>
+              <option value="Pésima">Pésima (0% - 30%)</option>
             </select>
           </div>
         </div>
@@ -990,7 +1003,7 @@
             </label>
             <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
               <input type="checkbox" name="export-col" value="observaciones" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-              <span>Observaciones</span>
+              <span>Comentarios</span>
             </label>
           </div>
         </div>
@@ -1050,6 +1063,79 @@
           Cerrar
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: IMPORTADOR MASIVO DE EXCEL (ADMIN) -->
+  <div id="modal-import-excel" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      
+      <!-- Modal Header -->
+      <div class="bg-slate-50/90 px-5 py-3.5 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-sm font-bold shadow-xs">
+            <i class="fa-solid fa-file-import"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Importar Archivo Excel</h3>
+            <p class="text-[11px] text-slate-500">Carga masiva para Gasto, Control Admin o Dirección General</p>
+          </div>
+        </div>
+        <button onclick="closeImportModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <form id="form-import-excel" onsubmit="submitImportExcel(event)" class="p-5 space-y-4 text-xs overflow-y-auto flex-1">
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Origen / Tipo de Archivo *</label>
+          <select id="import-origen" required class="w-full p-2 border border-slate-300 rounded-xl bg-white focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
+            <option value="GASTO">Gasto Corriente ($1 - $3,000)</option>
+            <option value="CONTROL ADMINISTRATIVO">Control Administrativo C.A. ($3,001 - $7,900)</option>
+            <option value="DIRECCION GENERAL">Dirección General (Central D.G.)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 uppercase mb-1">Archivo de Hoja de Cálculo (.xlsx, .xls) *</label>
+          <div 
+            id="dropzone-excel" 
+            onclick="document.getElementById('input-file-excel').click()"
+            ondragover="event.preventDefault(); this.classList.add('border-emerald-500', 'bg-emerald-50/50')"
+            ondragleave="this.classList.remove('border-emerald-500', 'bg-emerald-50/50')"
+            ondrop="handleExcelDrop(event)"
+            class="border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2"
+          >
+            <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400 group-hover:text-emerald-600 transition"></i>
+            <div>
+              <p class="font-bold text-slate-700 text-xs">Haz clic para seleccionar o arrastra el archivo aquí</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Formatos compatibles: Microsoft Excel (.xlsx, .xls)</p>
+            </div>
+            <div id="import-file-name" class="hidden mt-2 font-mono text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-lg"></div>
+          </div>
+          <input type="file" id="input-file-excel" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileSelected(this)">
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-900 text-[11px] flex items-start gap-2">
+          <i class="fa-solid fa-circle-info text-blue-600 mt-0.5"></i>
+          <div>
+            <span class="font-bold">Protección contra duplicados:</span> Si el archivo contiene números de serie o códigos de inventario ya existentes, se omitirán de forma segura para no duplicar registros.
+          </div>
+        </div>
+
+        <div id="import-status-msg" class="hidden text-xs p-3 rounded-xl border"></div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeImportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-import" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold transition shadow-xs flex items-center gap-1.5">
+            <i class="fa-solid fa-file-arrow-up"></i> Iniciar Importación
+          </button>
+        </div>
+      </form>
+
     </div>
   </div>
 
@@ -1180,10 +1266,10 @@
         <div>
           <label class="block font-semibold text-slate-700 uppercase mb-1">Condición Física Actual</label>
           <select id="select-condicion-actual" required class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white font-medium">
-            <option value="Excelente 91% - 100%">Excelente (91% - 100% Sin daños ni desgaste)</option>
-            <option value="Buena 61% - 80%">Buena (61% - 80% Operativo con desgaste normal)</option>
-            <option value="Regular 41% - 60%">Regular (41% - 60% Funcional con fallas menores o estética deficiente)</option>
-            <option value="Mala / Chatarra 0% - 40%">Mala / Chatarra (0% - 40% Daño grave, inoperable o irreparable)</option>
+            <option value="Excelente">Excelente (91% - 100% Sin daños ni desgaste)</option>
+            <option value="Buena" selected>Buena (61% - 90% Operativo con desgaste normal)</option>
+            <option value="Mala / Regular">Mala / Regular (31% - 60% Funcional con fallas o estética deficiente)</option>
+            <option value="Pésima">Pésima (0% - 30% Inoperable, quemado o para desincorporación)</option>
           </select>
         </div>
 

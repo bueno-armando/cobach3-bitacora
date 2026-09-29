@@ -195,6 +195,16 @@ function applyRolePermissionsUI() {
       btnNuevo.classList.remove('hidden');
     }
   }
+
+  // Botón Importar Excel: exclusivo de Administrador
+  const btnImport = document.getElementById('btn-open-import');
+  if (btnImport) {
+    if (user.rol === 'admin') {
+      btnImport.classList.remove('hidden');
+    } else {
+      btnImport.classList.add('hidden');
+    }
+  }
 }
 
 async function checkSession() {
@@ -333,6 +343,8 @@ async function loadActivos() {
     params.append('origen', 'DIRECCION GENERAL');
   } else if (state.tab === 'PENDIENTES') {
     params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
+  } else if (state.tab === 'DISCREPANCIAS') {
+    params.append('discrepancias', 'true');
   }
 
   try {
@@ -356,6 +368,20 @@ async function loadActivos() {
     `;
     console.error(err);
   }
+}
+
+// Helper para renderizar insignia de condición física en la tabla
+function getCondicionBadge(cond) {
+  if (!cond) return '<span class="text-slate-600 font-semibold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[9px]">Buena</span>';
+  const c = cond.toLowerCase();
+  if (c.includes('exce')) {
+    return '<span class="text-emerald-800 font-bold bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 text-[9px] shadow-xs">Excelente</span>';
+  } else if (c.includes('pesim') || c.includes('pésim')) {
+    return '<span class="text-red-800 font-bold bg-red-100/90 px-1.5 py-0.5 rounded border border-red-300 text-[9px] shadow-xs">Pésima</span>';
+  } else if (c.includes('mala') || c.includes('regular')) {
+    return '<span class="text-amber-800 font-bold bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-300 text-[9px] shadow-xs">Mala / Regular</span>';
+  }
+  return '<span class="text-slate-600 font-semibold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[9px]">Buena</span>';
 }
 
 // Renderizar filas de la tabla con las columnas solicitadas
@@ -434,7 +460,7 @@ function renderTable(items) {
             ${item.codigo_interno}
           </span>
           <div class="text-[9px] text-amber-700 font-semibold flex items-center gap-1 leading-none">
-            <i class="fa-solid fa-clock text-[8px]"></i> Pendiente
+            <i class="fa-solid fa-clock text-[8px]"></i> Código pendiente
           </div>
         </div>
       `;
@@ -481,9 +507,10 @@ function renderTable(items) {
           <div class="font-bold text-slate-800 leading-tight truncate text-xs" title="${escapeHtml(item.descripcion)}">
             ${escapeHtml(item.descripcion)}
           </div>
-          <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 leading-none truncate">
+          <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 leading-none truncate">
             ${origenPill}
-            ${item.categoria ? `<span class="text-slate-400 truncate max-w-[130px]" title="${escapeHtml(item.categoria)}">· ${escapeHtml(item.categoria)}</span>` : ''}
+            ${getCondicionBadge(item.condicion_actual || item.condicion || item.condicion_dg)}
+            ${item.tiene_discrepancia_dg ? '<span class="text-amber-700 bg-amber-100 px-1 py-0.5 rounded text-[9px] font-bold border border-amber-300" title="Discrepancia con D.G. (deterioro o baja)"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
           </div>
         </td>
 
@@ -689,7 +716,8 @@ function setTab(tabName) {
                    tabName === 'GASTO' ? 'tab-gasto' :
                    (tabName === 'CONTROL ADMINISTRATIVO' || tabName === 'C.A.') ? 'tab-ca' :
                    (tabName === 'DIRECCION GENERAL' || tabName === 'CENTRAL') ? 'tab-central' :
-                   tabName === 'PENDIENTES' ? 'tab-pendientes' : 'tab-all';
+                   tabName === 'PENDIENTES' ? 'tab-pendientes' :
+                   tabName === 'DISCREPANCIAS' ? 'tab-discrepancias' : 'tab-all';
 
   const activeBtn = document.getElementById(activeId);
   if (activeBtn) {
@@ -1367,25 +1395,38 @@ async function addSingleToQueue(id) {
 async function addSelectedToQueue() {
   if (state.selectedIds.size === 0) return;
   const count = state.selectedIds.size;
-  showToast(`Agregando ${count} activos a la cola...`);
+  showToast(`Agregando ${count} activo(s) a la cola...`);
 
   try {
     const ids = Array.from(state.selectedIds);
-    const promises = ids.map(id => {
+    const idsToFetch = [];
+    ids.forEach(id => {
       const existing = state.printQueue.get(id);
       if (existing) {
         existing.copies = (existing.copies || 1) + 1;
-        return Promise.resolve(existing);
+      } else {
+        idsToFetch.push(id);
       }
-      return authFetch(`/api/activos/${id}`).then(r => r.json()).then(activo => {
-        state.printQueue.set(id, { ...activo, copies: 1 });
-      });
     });
-    await Promise.all(promises);
+
+    if (idsToFetch.length > 0) {
+      const res = await authFetch('/api/activos/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsToFetch })
+      });
+      if (!res.ok) throw new Error('Error al obtener activos en lote');
+      const items = await res.json();
+      items.forEach(activo => {
+        state.printQueue.set(activo.id, { ...activo, copies: 1 });
+      });
+    }
+
     saveQueueToStorage();
     clearSelection();
     showToast(`¡${count} activo(s) añadidos a la cola de impresión!`);
   } catch (err) {
+    console.error(err);
     showToast('Error al procesar la cola', true);
   }
 }
@@ -1394,8 +1435,13 @@ async function selectAllFilteredActivos() {
   try {
     showToast('Cargando todos los activos del filtro actual...');
     const params = new URLSearchParams();
-    if (state.tab) params.append('origen', state.tab === 'PENDIENTES' ? '' : state.tab);
-    if (state.tab === 'PENDIENTES') params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
+    if (state.tab === 'PENDIENTES') {
+      params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
+    } else if (state.tab === 'DISCREPANCIAS') {
+      params.append('discrepancias', 'true');
+    } else if (state.tab) {
+      params.append('origen', state.tab);
+    }
     if (state.q) params.append('q', state.q);
     if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
     if (state.categoria_id) params.append('categoria_id', state.categoria_id);
@@ -1939,6 +1985,9 @@ function downloadExcelFiltered() {
   } else if (state.tab === 'PENDIENTES') {
     params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
     params.append('scope', 'PENDIENTES');
+  } else if (state.tab === 'DISCREPANCIAS') {
+    params.append('discrepancias', 'true');
+    params.append('scope', 'DISCREPANCIAS_DG');
   }
 
   if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
@@ -2209,3 +2258,133 @@ function switchFromCondicionToPhoto() {
   openImageUploadModal(id, desc, '');
 }
 
+// -------------------------------------------------------------
+// IMPORTADOR MASIVO DE EXCEL (ADMIN)
+// -------------------------------------------------------------
+function openImportModal() {
+  const modal = document.getElementById('modal-import-excel');
+  if (!modal) return;
+  document.getElementById('form-import-excel')?.reset();
+  const fileLabel = document.getElementById('import-file-name');
+  if (fileLabel) {
+    fileLabel.textContent = '';
+    fileLabel.classList.add('hidden');
+  }
+  const statusMsg = document.getElementById('import-status-msg');
+  if (statusMsg) {
+    statusMsg.className = 'hidden text-xs p-3 rounded-xl border';
+    statusMsg.innerHTML = '';
+  }
+  const btn = document.getElementById('btn-submit-import');
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> Iniciar Importación';
+  }
+  modal.classList.remove('hidden');
+}
+
+function closeImportModal() {
+  const modal = document.getElementById('modal-import-excel');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleExcelFileSelected(input) {
+  const file = input.files?.[0];
+  const fileLabel = document.getElementById('import-file-name');
+  if (!fileLabel) return;
+  if (file) {
+    fileLabel.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    fileLabel.classList.remove('hidden');
+  } else {
+    fileLabel.textContent = '';
+    fileLabel.classList.add('hidden');
+  }
+}
+
+function handleExcelDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const dropzone = document.getElementById('dropzone-excel');
+  if (dropzone) {
+    dropzone.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+  }
+  const dt = e.dataTransfer;
+  const files = dt?.files;
+  if (files && files.length > 0) {
+    const input = document.getElementById('input-file-excel');
+    if (input) {
+      input.files = files;
+      handleExcelFileSelected(input);
+    }
+  }
+}
+
+async function submitImportExcel(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('input-file-excel');
+  const origenInput = document.getElementById('import-origen');
+  const statusMsg = document.getElementById('import-status-msg');
+  const btn = document.getElementById('btn-submit-import');
+
+  if (!fileInput?.files?.[0]) {
+    showToast('Selecciona un archivo de Excel para importar', true);
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const origen = origenInput ? origenInput.value : 'GASTO';
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('origen', origen);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Importando datos...';
+  statusMsg.className = 'text-xs p-3 rounded-xl border bg-blue-50 border-blue-200 text-blue-900 block';
+  statusMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Procesando archivo y normalizando catálogos...';
+
+  try {
+    const res = await authFetch('/api/import/excel', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.detail || 'Error en la importación');
+    }
+
+    statusMsg.className = 'text-xs p-3 rounded-xl border bg-emerald-50 border-emerald-300 text-emerald-900 block space-y-1';
+    statusMsg.innerHTML = `
+      <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+        <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i> ${escapeHtml(data.mensaje || 'Importación completada')}
+      </div>
+      <div class="text-[11px] grid grid-cols-2 gap-1 pt-1.5 text-slate-700">
+        <div>Total filas leídas: <b>${data.total_leidos ?? 0}</b></div>
+        <div class="text-emerald-700">Nuevos importados: <b>${data.creados ?? 0}</b></div>
+        <div class="text-amber-700">Duplicados omitidos: <b>${data.omitidos ?? 0}</b></div>
+        <div class="text-red-700">Errores u omisiones: <b>${data.errores ? data.errores.length : 0}</b></div>
+      </div>
+    `;
+
+    showToast(`Importación finalizada: ${data.creados ?? 0} nuevos activos añadidos`);
+    loadCatalogos();
+    loadActivos();
+    loadStats();
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Importación Completada';
+  } catch (err) {
+    console.error(err);
+    statusMsg.className = 'text-xs p-3 rounded-xl border bg-red-50 border-red-300 text-red-900 block';
+    statusMsg.innerHTML = `
+      <div class="font-bold flex items-center gap-1 text-red-800">
+        <i class="fa-solid fa-triangle-exclamation text-red-600"></i> Error al importar archivo
+      </div>
+      <p class="mt-1 text-[11px] text-red-700">${escapeHtml(err.message || 'Error desconocido')}</p>
+    `;
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> Reintentar Importación';
+    showToast(err.message || 'Error en la importación', true);
+  }
+}

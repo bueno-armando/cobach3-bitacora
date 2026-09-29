@@ -28,7 +28,11 @@ En la operación cotidiana del Plantel 3:
   * `codigo_interno`: Identificador único y atómico asignado de inmediato al ingresar el activo al plantel (`PL3-GTO-XXXX`, `PL3-CA-XXXX`, `PL3-DG-XXXXXX`). Consecutivo automático protegido contra alteración manual.
   * `codigo_oficial`: Número de la etiqueta verde oficial, el cual permanece pendiente (`NULL`) hasta su colocación física.
 * **Módulo de Conciliación de Etiquetas:** Permite al encargado de informática buscar cualquier activo provisional y registrar en segundos el código oficial de la etiqueta verde tan pronto como Dirección General la instala, manteniendo una bitácora histórica inmutable de auditoría (`historial_etiquetas`).
-* **Control y Filtro de Condición Física:** Escala oficial (`Excelente 81% - 100%`, `Buena 61% - 80%`, `Mala 41% - 60%`, `Pésima 0% - 40%`) con selector directo en la barra de búsqueda y comparativa de deterioro para justificar trámites de desincorporación/baja.
+* **Control y Filtro de Condición Física:** Escala física unificada (`Excelente`, `Buena`, `Mala / Regular`, `Pésima`) con selector directo en la barra de búsqueda y comparativa de deterioro para justificar trámites de desincorporación/baja.
+* **Insignias Visuales de Condición y Discrepancias:** Visualización directa de la condición física en la columna de Descripción en la tabla principal, acompañada de indicador de discrepancia D.G. en bienes con deterioro o baja.
+* **Pestaña y Vista de Auditoría "Discrepancias D.G.":** Filtro especializado que localiza al instante activos de Dirección General con deterioro (`Mala / Regular`, `Pésima`) o fuera de operación (`EN_DESUSO`, `EN_REPARACION`, `BAJA`) para auditorías patrimoniales y justificación de desincorporación.
+* **Importador Masivo de Hojas de Cálculo Excel (.xlsx, .xls y tablas exportadas de D.G.):** Carga rápida exclusiva para administradores (`admin`) que normaliza catálogos y genera consecutivos internos de forma atómica para Gasto, Control Admin y Dirección General, con protección inteligente contra duplicados por número de serie o código de inventario oficial.
+* **Endpoint por Lotes `/api/activos/batch`:** Agilización instantánea de la selección masiva hacia la Cola de Impresión en una única llamada de red, eliminando cuellos de botella por peticiones concurrentes.
 * **Registro Fotográfico de Activos:** Fotografías de alta resolución accesibles directamente desde la vista inicial, con protección inteligente contra sobreescritura de equipos con daños particulares al propagar fotos por modelo.
 * **Impresión de Etiquetas en Hoja Carta (10 por Hoja / 2x5):**
   * Generación al vuelo en el cliente de **Código de Barras (CODE128)**, **Código QR** o **Ambos Códigos emparejados** con el logo institucional del Halcón Plantel 3.
@@ -37,7 +41,7 @@ En la operación cotidiana del Plantel 3:
   * Esquinas cuadradas de 90° optimizadas para corte manual con guillotina o tijeras.
   * Función *"Llenar hoja (10)"* para generar plantillas completas de un activo en un solo clic.
 * **Cola de Impresión Acumulativa (Print Queue):** Permite acumular activos de distintas áreas y mandarlos a impresión conjunta o exportar la selección.
-* **Exportación Dinámica a Excel (.xlsx):** Selector interactivo de columnas (hasta 18 campos disponibles con controles "Todas", "Predeterminadas" y "Ninguna"), respetando filtros activos de condición física o selección de cola.
+* **Exportación Dinámica a Excel (.xlsx):** Selector interactivo de columnas (hasta 18 campos disponibles con controles "Todas", "Predeterminadas" y "Ninguna"), respetando filtros activos de condición física o selección de cola. Formateado con ajuste de texto (`wrap_text=True`), anchos de columna acotados (máx. 42 caracteres) y columna de notas unificada bajo **"Comentarios"**.
 
 ---
 

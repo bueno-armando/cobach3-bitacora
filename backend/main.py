@@ -1,6 +1,6 @@
 import os
 import datetime
-from typing import Optional
+from typing import Optional, List
 from fastapi import FastAPI, Depends, Query, status, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db, engine, SessionLocal
 from backend.models import Base, Usuario
 import backend.crud as crud
+from backend.importer import import_excel_activos
 from backend.auth import (
     hash_password,
     verify_password,
@@ -21,6 +22,7 @@ from backend.auth import (
 )
 from backend.schemas import (
     PaginatedActivosResponse,
+    ActivoListItem,
     ActivoDetail,
     ActivoCreate,
     ActivoUpdate,
@@ -31,7 +33,9 @@ from backend.schemas import (
     LoginRequest,
     UserResponse,
     TokenResponse,
-    ActualizarCondicionRequest
+    ActualizarCondicionRequest,
+    BatchIdsRequest,
+    ImportExcelResponse
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -116,7 +120,8 @@ def list_activos(
     resguardante_id: Optional[int] = Query(None, description="Filtrar por ID de resguardante"),
     estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus etiqueta: PENDIENTE_ETIQUETA, ETIQUETADO_OFICIAL"),
     estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo: OPERATIVO, EN_DESUSO, EN_REPARACION, BAJA"),
-    condicion: Optional[str] = Query(None, description="Filtrar por condición física: Excelente, Buena, Mala, Pésima"),
+    condicion: Optional[str] = Query(None, description="Filtrar por condición física: Excelente, Buena, Mala / Regular, Pésima"),
+    discrepancias: Optional[bool] = Query(False, description="Filtrar activos que presentan discrepancias con Dirección General"),
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=2500),
     current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
@@ -132,9 +137,21 @@ def list_activos(
         estatus_etiqueta=estatus_etiqueta,
         estatus_activo=estatus_activo,
         condicion=condicion,
+        discrepancias=discrepancias,
         page=page,
         limit=limit
     )
+
+
+@app.post("/api/activos/batch", response_model=List[ActivoListItem], summary="Obtener lote de activos por lista de IDs")
+def get_activos_batch(
+    data: BatchIdsRequest,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo", "consulta"])),
+    db: Session = Depends(get_db)
+):
+    """Retorna los activos solicitados en una única consulta optimizada."""
+    return crud.get_activos_by_ids(db=db, ids=data.ids)
+
 
 
 @app.post("/api/activos", response_model=ActivoDetail, status_code=status.HTTP_201_CREATED, summary="Registrar nuevo activo")
@@ -277,6 +294,7 @@ def export_excel(
     estatus_etiqueta: Optional[str] = Query(None, description="Filtrar por estatus etiqueta"),
     estatus_activo: Optional[str] = Query(None, description="Filtrar por estatus operativo"),
     condicion: Optional[str] = Query(None, description="Filtrar por condición física"),
+    discrepancias: Optional[bool] = Query(False, description="Filtrar por discrepancias con D.G."),
     ids: Optional[str] = Query(None, description="Lista de IDs separados por coma para selección"),
     scope: Optional[str] = Query(None, description="Nombre descriptivo del ámbito (ej. GASTO, SELECCION)"),
     columnas: Optional[str] = Query(None, description="Lista de columnas separadas por comas a incluir"),
@@ -303,6 +321,7 @@ def export_excel(
         estatus_etiqueta=estatus_etiqueta,
         estatus_activo=estatus_activo,
         condicion=condicion,
+        discrepancias=discrepancias,
         ids=id_list,
         columnas=columnas_list
     )
@@ -321,7 +340,31 @@ def export_excel(
     )
 
 
+@app.post("/api/import/excel", response_model=ImportExcelResponse, summary="Importar activos masivamente desde hoja Excel")
+async def import_excel(
+    file: UploadFile = File(...),
+    origen: str = Form(...),
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
+    """Procesa y carga un archivo Excel (Gasto, Control Admin o Dirección General). Exclusivo de administrador."""
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Solo se admiten archivos Excel (.xlsx o .xls)")
+    content = await file.read()
+    try:
+        resultado = import_excel_activos(
+            db=db,
+            file_bytes=content,
+            origen=origen,
+            filename=file.filename
+        )
+        return resultado
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # Montar la carpeta frontend si existe
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+

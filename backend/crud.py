@@ -30,6 +30,7 @@ def get_activos(
     estatus_etiqueta: Optional[str] = None,
     estatus_activo: Optional[str] = None,
     condicion: Optional[str] = None,
+    discrepancias: Optional[bool] = False,
     page: int = 1,
     limit: int = 50
 ) -> Dict[str, Any]:
@@ -38,6 +39,16 @@ def get_activos(
         joinedload(Activo.ubicacion),
         joinedload(Activo.resguardante)
     )
+
+    if discrepancias:
+        query = query.filter(
+            Activo.origen == "DIRECCION GENERAL",
+            or_(
+                Activo.estatus_activo.in_(["EN_DESUSO", "EN_REPARACION", "BAJA"]),
+                Activo.condicion_actual.in_(["Mala / Regular", "Pésima"]),
+                Activo.condicion.in_(["Mala / Regular", "Pésima"])
+            )
+        )
 
     if origen:
         query = query.filter(Activo.origen == origen)
@@ -54,13 +65,37 @@ def get_activos(
 
     if condicion and condicion.strip():
         c_str = condicion.strip()
-        if c_str.lower() in ("pesima", "pésima"):
+        c_low = c_str.lower()
+        if "pesim" in c_low or "pésim" in c_low:
             query = query.filter(
                 or_(
                     Activo.condicion_actual.ilike("%Pésima%"),
                     Activo.condicion_actual.ilike("%Pesima%"),
                     Activo.condicion.ilike("%Pésima%"),
                     Activo.condicion.ilike("%Pesima%")
+                )
+            )
+        elif "mala" in c_low or "regular" in c_low:
+            query = query.filter(
+                or_(
+                    Activo.condicion_actual.ilike("%Mala%"),
+                    Activo.condicion_actual.ilike("%Regular%"),
+                    Activo.condicion.ilike("%Mala%"),
+                    Activo.condicion.ilike("%Regular%")
+                )
+            )
+        elif "buen" in c_low:
+            query = query.filter(
+                or_(
+                    Activo.condicion_actual.ilike("%Buena%"),
+                    Activo.condicion.ilike("%Buena%")
+                )
+            )
+        elif "exce" in c_low:
+            query = query.filter(
+                or_(
+                    Activo.condicion_actual.ilike("%Excelente%"),
+                    Activo.condicion.ilike("%Excelente%")
                 )
             )
         else:
@@ -110,7 +145,7 @@ def get_activos(
     for a in activos:
         # Normalizar estatus_activo a OPERATIVO si dice ACTIVO
         norm_estatus_activo = "OPERATIVO" if a.estatus_activo == "ACTIVO" else a.estatus_activo
-        cond_act = a.condicion_actual or a.condicion or "Buena 61% - 80%"
+        cond_act = a.condicion_actual or a.condicion or "Buena"
         items.append(
             ActivoListItem(
                 id=a.id,
@@ -132,7 +167,8 @@ def get_activos(
                 condicion_actual=cond_act,
                 imagen_url=a.imagen_url,
                 es_foto_personalizada=bool(a.es_foto_personalizada),
-                observaciones=a.observaciones
+                observaciones=a.observaciones,
+                tiene_discrepancia_dg=bool(a.tiene_discrepancia_dg)
             )
         )
 
@@ -157,7 +193,7 @@ def get_activo_by_id(db: Session, activo_id: int) -> ActivoDetail:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
     norm_estatus_activo = "OPERATIVO" if activo.estatus_activo == "ACTIVO" else activo.estatus_activo
-    cond_act = activo.condicion_actual or activo.condicion or "Buena 61% - 80%"
+    cond_act = activo.condicion_actual or activo.condicion or "Buena"
 
     return ActivoDetail(
         id=activo.id,
@@ -188,10 +224,53 @@ def get_activo_by_id(db: Session, activo_id: int) -> ActivoDetail:
         es_foto_personalizada=bool(activo.es_foto_personalizada),
         observaciones=activo.observaciones,
         archivo_fuente=activo.archivo_fuente,
+        tiene_discrepancia_dg=bool(activo.tiene_discrepancia_dg),
         created_at=activo.created_at,
         updated_at=activo.updated_at,
         historial_etiquetas=activo.historial_etiquetas
     )
+
+
+def get_activos_by_ids(db: Session, ids: List[int]) -> List[ActivoListItem]:
+    """Obtiene un lote de activos por lista de IDs en una sola consulta SQL optimizada."""
+    if not ids:
+        return []
+    activos = db.query(Activo).options(
+        joinedload(Activo.categoria),
+        joinedload(Activo.ubicacion),
+        joinedload(Activo.resguardante)
+    ).filter(Activo.id.in_(ids)).order_by(Activo.id.asc()).all()
+
+    items = []
+    for a in activos:
+        norm_estatus_activo = "OPERATIVO" if a.estatus_activo == "ACTIVO" else a.estatus_activo
+        cond_act = a.condicion_actual or a.condicion or "Buena"
+        items.append(
+            ActivoListItem(
+                id=a.id,
+                codigo_interno=a.codigo_interno,
+                codigo_oficial=a.codigo_oficial,
+                origen=a.origen,
+                estatus_etiqueta=a.estatus_etiqueta,
+                estatus_activo=norm_estatus_activo,
+                descripcion=a.descripcion,
+                especificacion=a.especificacion,
+                marca=a.marca,
+                modelo=a.modelo,
+                numero_serie=a.numero_serie,
+                categoria=a.categoria.nombre if a.categoria else None,
+                ubicacion=a.ubicacion.nombre if a.ubicacion else None,
+                resguardante=a.resguardante.nombre if a.resguardante else None,
+                condicion=cond_act,
+                condicion_dg=a.condicion_dg,
+                condicion_actual=cond_act,
+                imagen_url=a.imagen_url,
+                es_foto_personalizada=bool(a.es_foto_personalizada),
+                observaciones=a.observaciones,
+                tiene_discrepancia_dg=bool(a.tiene_discrepancia_dg)
+            )
+        )
+    return items
 
 
 def generate_next_codigo_interno(db: Session, origen: str) -> str:
@@ -218,6 +297,9 @@ def generate_next_codigo_interno(db: Session, origen: str) -> str:
             pass
 
     return f"{pfx}-{max_num + 1:04d}"
+
+
+get_next_codigo_interno = generate_next_codigo_interno
 
 
 def get_or_create_lookup(db: Session, model, id_val: Optional[int], name_val: Optional[str]) -> Optional[int]:
@@ -594,6 +676,7 @@ def export_activos_to_excel(
     estatus_etiqueta: Optional[str] = None,
     estatus_activo: Optional[str] = None,
     condicion: Optional[str] = None,
+    discrepancias: Optional[bool] = False,
     ids: Optional[List[int]] = None,
     columnas: Optional[List[str]] = None
 ) -> io.BytesIO:
@@ -606,6 +689,15 @@ def export_activos_to_excel(
     if ids:
         query = query.filter(Activo.id.in_(ids))
     else:
+        if discrepancias:
+            query = query.filter(
+                Activo.origen == "DIRECCION GENERAL",
+                or_(
+                    Activo.estatus_activo.in_(["EN_DESUSO", "EN_REPARACION", "BAJA"]),
+                    Activo.condicion_actual.in_(["Mala / Regular", "Pésima"]),
+                    Activo.condicion.in_(["Mala / Regular", "Pésima"])
+                )
+            )
         if origen:
             query = query.filter(Activo.origen == origen)
         if estatus_etiqueta:
@@ -618,13 +710,37 @@ def export_activos_to_excel(
                 query = query.filter(Activo.estatus_activo == est_up)
         if condicion and condicion.strip():
             c_str = condicion.strip()
-            if c_str.lower() in ("pesima", "pésima"):
+            c_low = c_str.lower()
+            if "pesim" in c_low or "pésim" in c_low:
                 query = query.filter(
                     or_(
                         Activo.condicion_actual.ilike("%Pésima%"),
                         Activo.condicion_actual.ilike("%Pesima%"),
                         Activo.condicion.ilike("%Pésima%"),
                         Activo.condicion.ilike("%Pesima%")
+                    )
+                )
+            elif "mala" in c_low or "regular" in c_low:
+                query = query.filter(
+                    or_(
+                        Activo.condicion_actual.ilike("%Mala%"),
+                        Activo.condicion_actual.ilike("%Regular%"),
+                        Activo.condicion.ilike("%Mala%"),
+                        Activo.condicion.ilike("%Regular%")
+                    )
+                )
+            elif "buen" in c_low:
+                query = query.filter(
+                    or_(
+                        Activo.condicion_actual.ilike("%Buena%"),
+                        Activo.condicion.ilike("%Buena%")
+                    )
+                )
+            elif "exce" in c_low:
+                query = query.filter(
+                    or_(
+                        Activo.condicion_actual.ilike("%Excelente%"),
+                        Activo.condicion.ilike("%Excelente%")
                     )
                 )
             else:
@@ -673,10 +789,10 @@ def export_activos_to_excel(
         "resguardante": ("Resguardante", lambda a: a.resguardante.nombre if a.resguardante else "", False),
         "origen": ("Fuente (Origen)", lambda a: a.origen or "", True),
         "condicion_dg": ("Condición D.G.", lambda a: a.condicion_dg or "", True),
-        "condicion_actual": ("Condición Actual (Plantel 3)", lambda a: a.condicion_actual or a.condicion or "Buena 61% - 80%", True),
+        "condicion_actual": ("Condición Actual (Plantel 3)", lambda a: a.condicion_actual or a.condicion or "Buena", True),
         "costo": ("Costo ($ MXN)", lambda a: f"${a.costo:,.2f}" if a.costo is not None else "", True),
         "created_at": ("Fecha Registro", lambda a: a.created_at.strftime("%Y-%m-%d") if a.created_at else "", True),
-        "observaciones": ("Observaciones / Comentarios", lambda a: a.observaciones or "", False),
+        "observaciones": ("Comentarios", lambda a: a.observaciones or "", False),
     }
 
     DEFAULT_KEYS = [
@@ -720,8 +836,8 @@ def export_activos_to_excel(
         top=Side(style='thin', color='E2E8F0'),
         bottom=Side(style='thin', color='E2E8F0')
     )
-    center_align = Alignment(horizontal="center", vertical="center")
-    left_align = Alignment(horizontal="left", vertical="center")
+    center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left_align = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
     for a in activos:
         row_data = [AVAILABLE_COLUMNS[k][1](a) for k in selected_keys]
@@ -741,7 +857,8 @@ def export_activos_to_excel(
             val_str = str(cell.value or "")
             if len(val_str) > max_len:
                 max_len = len(val_str)
-        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+        # Envolver texto y limitar el ancho máximo para no crear columnas kilométricas
+        ws.column_dimensions[col_letter].width = min(max(max_len + 4, 12), 42)
 
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions

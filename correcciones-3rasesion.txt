@@ -1,0 +1,15 @@
+CAMBIOS GRANDES:
+- Nuevo: Botón que abra un modal para importar un excel correspondiente a gasto, control admin o DG. Que el modal sea consistente con el resto de modales
+- Nuevo: Campo adicional en la BD para manejar la condición física del artículo de manera local. 
+- Nuevo: Usando el campo discutido en el punto anterior (y todos los campos en general) discutir como implementar una vista que muestre diferencias entre la BD de DG y las correcciones que se hicieron sobre la misma localmente.
+
+CORRECCIONES:
+- Reemplazar leyenda "Docente y Encargados de Resguardo" por "Personal"
+- Arreglar scordancia entre los criterios de condición en el filtro de búsqueda y las que salen en el modal para editar/ingresar activos y asegurarse de que se obtenga el mismo dato.
+	- Clasificación nueva: excelente, buena, mala/regular, pésima (explicación, la clasificación de DG no es muy cómoda porque no deja un rango para cosas en estado intermedio y por eso se está haciendo una clasificación propia) 
+- En vista principal, bajo columna descripción reemplazar la categoría del artículo por 
+- Cola de impresión/exportación no está tomando todas las entradas seleccionadas (falló en 202 artículos filtrados por condición mala). Asegurarse de que el número de artículos reflejado en el botón de cola se actualice correctamente
+- Bajo columna Núm. Inventario: que diga "Código pendiente" en vez de "Pendiente"
+- En modal donde se seleccionan campos a exportar, cambiar "Observaciones" por "Comentarios"
+- Que los excel exportados envuelvan el texto (para no generar columnas muy anchas)
+- Funcionalidad para imprimir reporte sigiuendo formato de archivo (que mike me va a mandar después)

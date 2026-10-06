@@ -136,7 +136,7 @@ El sistema incorpora control de acceso basado en roles para desacoplar el uso ad
 ### Cuentas Sembradas por Defecto:
 Para eliminar la fricción burocrática de crear cuentas individuales por cada docente, se inicializan automáticamente 3 cuentas institucionales compartidas al arrancar la aplicación (`seed_default_users`):
 * `admin` / `Cobach3#Admin`
-* `resguardo` / `Cobach3#Resguardo`
+* `resguardo` / `personal#cobach3`
 * `consulta` / `Cobach3#Consulta`
 
 ### Seguridad Criptográfica:

@@ -165,7 +165,7 @@ def seed_default_users(db: Session):
         {
             "username": "resguardo",
             "nombre_completo": "Personal",
-            "password_plain": "Cobach3#Resguardo",
+            "password_plain": "personal#cobach3",
             "rol": "resguardo"
         },
         {
@@ -188,4 +188,5 @@ def seed_default_users(db: Session):
             db.add(nuevo)
         else:
             user.nombre_completo = item["nombre_completo"]
+            user.password_hash = hash_password(item["password_plain"])
     db.commit()

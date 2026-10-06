@@ -22,7 +22,7 @@ def test_auth_and_role_permissions():
         token_admin = res_admin.json()["access_token"]
         headers_admin = {"Authorization": f"Bearer {token_admin}"}
 
-        res_resguardo = client.post("/api/auth/login", json={"username": "resguardo", "password": "Cobach3#Resguardo"})
+        res_resguardo = client.post("/api/auth/login", json={"username": "resguardo", "password": "personal#cobach3"})
         assert res_resguardo.status_code == 200
         token_resguardo = res_resguardo.json()["access_token"]
         headers_resguardo = {"Authorization": f"Bearer {token_resguardo}"}

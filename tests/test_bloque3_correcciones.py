@@ -14,7 +14,7 @@ def get_admin_headers():
     return {"Authorization": f"Bearer {token}"}
 
 def get_resguardo_headers():
-    res = client.post("/api/auth/login", json={"username": "resguardo", "password": "Cobach3#Resguardo"})
+    res = client.post("/api/auth/login", json={"username": "resguardo", "password": "personal#cobach3"})
     assert res.status_code == 200
     token = res.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

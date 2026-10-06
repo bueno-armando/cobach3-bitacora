@@ -138,7 +138,7 @@ async function submitLogin(e) {
 function quickLogin(rol) {
   const credentials = {
     admin: { user: 'admin', pass: 'Cobach3#Admin' },
-    resguardo: { user: 'resguardo', pass: 'Cobach3#Resguardo' },
+    resguardo: { user: 'resguardo', pass: 'personal#cobach3' },
     consulta: { user: 'consulta', pass: 'Cobach3#Consulta' }
   };
   const cred = credentials[rol];

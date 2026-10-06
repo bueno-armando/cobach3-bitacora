@@ -154,7 +154,7 @@ El sistema se inicializa automáticamente con 3 perfiles compartidos para facili
 | Rol | Usuario | Contraseña | Perfil y Permisos |
 | :--- | :--- | :--- | :--- |
 | **`admin`** | `admin` | `Cobach3#Admin` | **Administrador:** Control total (altas, ediciones, eliminación permanente, asignación de etiqueta verde oficial, gestión de fotos y reportes). |
-| **`resguardo`** | `resguardo` | `Cobach3#Resguardo` | **Personal:** Registro de nuevos activos (código autogenerado), reporte de desuso/reparación, actualización de condición física y fotos de evidencia. |
+| **`resguardo`** | `resguardo` | `personal#cobach3` | **Personal:** Registro de nuevos activos (código autogenerado), reporte de desuso/reparación, actualización de condición física y fotos de evidencia. |
 | **`consulta`** | `consulta` | `Cobach3#Consulta` | **Solo Lectura:** Búsqueda, visualización de fichas técnicas, exportación personalizada y cola de impresión. |
 
 ---

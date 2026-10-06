@@ -635,22 +635,19 @@ function toggleRowSelection(id, checkbox) {
   updateSelectedCountUI();
 }
 
-async function toggleSelectAll(masterCheckbox) {
+function toggleSelectAll(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.row-checkbox');
   if (masterCheckbox.checked) {
-    if (state.totalItems > state.limit) {
-      await selectAllFilteredActivos();
-      return;
-    }
-    const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
       cb.checked = true;
       const id = parseInt(cb.dataset.id, 10);
       state.selectedIds.add(id);
     });
-    updateSelectedCountUI();
   } else {
     clearSelection();
+    return;
   }
+  updateSelectedCountUI();
 }
 
 function clearSelection() {
@@ -668,10 +665,43 @@ function updateSelectedCountUI() {
   const btnSelectAllFiltered = document.getElementById('btn-select-all-filtered');
   const selectAllText = document.getElementById('select-all-filtered-text');
 
+  // Elementos del Banner Gmail
+  const banner = document.getElementById('selection-banner-gmail');
+  const bannerText = document.getElementById('selection-banner-text');
+  const bannerIcon = document.getElementById('selection-banner-icon');
+  const bannerBtnSelectAll = document.getElementById('btn-banner-select-all');
+  const bannerBtnClear = document.getElementById('btn-banner-clear');
+
   if (countBadge) countBadge.textContent = count;
 
   if (count > 0) {
-    bar.classList.remove('hidden');
+    if (bar) bar.classList.remove('hidden');
+
+    // Manejo del Banner estilo Gmail cuando los activos del filtro superan los de la página actual
+    if (banner) {
+      if (state.totalItems > count) {
+        banner.className = 'bg-amber-50/95 border-b border-amber-200 px-4 py-2.5 text-center text-xs text-amber-900 font-medium transition flex items-center justify-center gap-1.5 flex-wrap shadow-inner';
+        if (bannerIcon) bannerIcon.className = 'fa-solid fa-circle-info text-amber-600 text-sm';
+        if (bannerText) {
+          bannerText.innerHTML = `Se han seleccionado <strong class="text-amber-950 font-bold">${count}</strong> activos de esta página.`;
+        }
+        if (bannerBtnSelectAll) {
+          bannerBtnSelectAll.classList.remove('hidden');
+          bannerBtnSelectAll.innerHTML = `Seleccionar los <strong>${state.totalItems.toLocaleString()}</strong> activos que coinciden con el filtro actual`;
+        }
+        if (bannerBtnClear) bannerBtnClear.classList.add('hidden');
+      } else {
+        // Todos los activos del filtro están seleccionados
+        banner.className = 'bg-emerald-50/95 border-b border-emerald-300 px-4 py-2.5 text-center text-xs text-emerald-900 font-medium transition flex items-center justify-center gap-1.5 flex-wrap shadow-inner';
+        if (bannerIcon) bannerIcon.className = 'fa-solid fa-circle-check text-emerald-600 text-sm';
+        if (bannerText) {
+          bannerText.innerHTML = `Están seleccionados todos los <strong class="text-emerald-950 font-bold">${count.toLocaleString()}</strong> activos que coinciden con el filtro.`;
+        }
+        if (bannerBtnSelectAll) bannerBtnSelectAll.classList.add('hidden');
+        if (bannerBtnClear) bannerBtnClear.classList.remove('hidden');
+      }
+    }
+
     if (state.totalItems > count && btnSelectAllFiltered) {
       btnSelectAllFiltered.classList.remove('hidden');
       if (selectAllText) selectAllText.textContent = `Seleccionar los ${state.totalItems} del filtro`;
@@ -679,7 +709,19 @@ function updateSelectedCountUI() {
       btnSelectAllFiltered.classList.add('hidden');
     }
   } else {
-    bar.classList.add('hidden');
+    if (bar) bar.classList.add('hidden');
+    if (banner) banner.classList.add('hidden');
+  }
+
+  // Sincronizar estado visual del checkbox maestro con la página visible
+  const master = document.getElementById('select-all');
+  if (master) {
+    const visibleCheckboxes = document.querySelectorAll('.row-checkbox');
+    if (visibleCheckboxes.length > 0) {
+      master.checked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+    } else {
+      master.checked = false;
+    }
   }
 }
 
@@ -701,13 +743,22 @@ function updatePaginationUI() {
     badge.classList.add('hidden');
   }
 
-  // Desmarcar select-all al cambiar de página
+  // Sincronizar select-all al cambiar de página
   const master = document.getElementById('select-all');
-  if (master) master.checked = false;
+  if (master) {
+    const visibleCheckboxes = document.querySelectorAll('.row-checkbox');
+    if (visibleCheckboxes.length > 0) {
+      master.checked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+    } else {
+      master.checked = false;
+    }
+  }
+  updateSelectedCountUI();
 }
 
 // Pestañas
 function setTab(tabName) {
+  clearSelection();
   state.tab = tabName;
   state.page = 1;
 
@@ -741,6 +792,7 @@ function debounceSearch() {
 }
 
 function applyFilters() {
+  clearSelection();
   state.q = document.getElementById('search-input').value;
   state.ubicacion_id = document.getElementById('filter-ubicacion').value;
   state.categoria_id = document.getElementById('filter-categoria').value;

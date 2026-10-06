@@ -50,6 +50,14 @@ def test_photo_shielding():
     # 1x1 dummy PNG
     fake_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
 
+    a1_orig_img = a1.imagen_url
+    a1_orig_pers = a1.es_foto_personalizada
+    a2_orig_img = a2.imagen_url
+    a2_orig_pers = a2.es_foto_personalizada
+
+    a1_uploaded = None
+    a2_uploaded = None
+
     headers = get_admin_headers()
     try:
         # Step 1: Upload a custom photo for a1
@@ -57,6 +65,7 @@ def test_photo_shielding():
         res1 = client.post(f"/api/activos/{a1.id}/imagen?propagate_model=false&es_personalizada=true", files=files1, headers=headers)
         assert res1.status_code == 200
         a1_img = res1.json()["imagen_url"]
+        a1_uploaded = a1_img
 
         db.refresh(a1)
         assert a1.es_foto_personalizada is True
@@ -66,6 +75,7 @@ def test_photo_shielding():
         files2 = {"file": ("generic_model.png", fake_png, "image/png")}
         res2 = client.post(f"/api/activos/{a2.id}/imagen?propagate_model=true&force_overwrite=false&es_personalizada=false", files=files2, headers=headers)
         assert res2.status_code == 200
+        a2_uploaded = res2.json()["imagen_url"]
 
         db.refresh(a1)
         db.refresh(a2)
@@ -77,15 +87,22 @@ def test_photo_shielding():
         assert a1.es_foto_personalizada is True
 
     finally:
-        # Clean up DB records and physical test files
-        import os, glob
-        client.delete(f"/api/activos/{a1.id}/imagen", headers=headers)
-        client.delete(f"/api/activos/{a2.id}/imagen", headers=headers)
-        for f in glob.glob("uploads/activo_*"):
-            try:
-                os.remove(f)
-            except Exception:
-                pass
+        # Clean up ONLY the specific test files created by this test
+        import os
+        for uploaded in [a1_uploaded, a2_uploaded]:
+            if uploaded and uploaded.startswith("/uploads/"):
+                filepath = uploaded.lstrip("/")
+                if os.path.exists(filepath):
+                    try:
+                        os.remove(filepath)
+                    except Exception:
+                        pass
+        # Restore DB fields to what they were before
+        a1.imagen_url = a1_orig_img
+        a1.es_foto_personalizada = a1_orig_pers
+        a2.imagen_url = a2_orig_img
+        a2.es_foto_personalizada = a2_orig_pers
+        db.commit()
         db.close()
 
 if __name__ == "__main__":

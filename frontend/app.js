@@ -635,18 +635,22 @@ function toggleRowSelection(id, checkbox) {
   updateSelectedCountUI();
 }
 
-function toggleSelectAll(masterCheckbox) {
-  const checkboxes = document.querySelectorAll('.row-checkbox');
-  checkboxes.forEach(cb => {
-    cb.checked = masterCheckbox.checked;
-    const id = parseInt(cb.dataset.id, 10);
-    if (masterCheckbox.checked) {
-      state.selectedIds.add(id);
-    } else {
-      state.selectedIds.delete(id);
+async function toggleSelectAll(masterCheckbox) {
+  if (masterCheckbox.checked) {
+    if (state.totalItems > state.limit) {
+      await selectAllFilteredActivos();
+      return;
     }
-  });
-  updateSelectedCountUI();
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+      const id = parseInt(cb.dataset.id, 10);
+      state.selectedIds.add(id);
+    });
+    updateSelectedCountUI();
+  } else {
+    clearSelection();
+  }
 }
 
 function clearSelection() {
@@ -1435,12 +1439,16 @@ async function selectAllFilteredActivos() {
   try {
     showToast('Cargando todos los activos del filtro actual...');
     const params = new URLSearchParams();
-    if (state.tab === 'PENDIENTES') {
+    if (state.tab === 'GASTO') {
+      params.append('origen', 'GASTO');
+    } else if (state.tab === 'CONTROL ADMINISTRATIVO' || state.tab === 'C.A.') {
+      params.append('origen', 'CONTROL ADMINISTRATIVO');
+    } else if (state.tab === 'DIRECCION GENERAL' || state.tab === 'CENTRAL') {
+      params.append('origen', 'DIRECCION GENERAL');
+    } else if (state.tab === 'PENDIENTES') {
       params.append('estatus_etiqueta', 'PENDIENTE_ETIQUETA');
     } else if (state.tab === 'DISCREPANCIAS') {
       params.append('discrepancias', 'true');
-    } else if (state.tab) {
-      params.append('origen', state.tab);
     }
     if (state.q) params.append('q', state.q);
     if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);

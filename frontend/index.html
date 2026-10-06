@@ -170,11 +170,11 @@
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-800 h-screen overflow-hidden flex flex-col font-sans antialiased">
 
   <!-- ENCABEZADO INSTITUCIONAL OPACO (SIN TRANSPARENCIAS) -->
   <!-- ENCABEZADO INSTITUCIONAL COMPACTO Y MINIMALISTA -->
-  <header class="header-solid text-white shadow-md sticky top-0 z-40 border-b border-emerald-950">
+  <header class="header-solid text-white shadow-md flex-shrink-0 z-30 border-b border-emerald-950">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex flex-wrap items-center justify-between gap-3">
       
       <!-- Lado Izquierdo: Título Arriba, Indicador de Rol Abajo -->
@@ -288,11 +288,11 @@
     </nav>
   </header>
 
-  <!-- CONTENEDOR PRINCIPAL -->
-  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex-1">
+  <!-- CONTENEDOR PRINCIPAL (APP SHELL - PANTALLA COMPLETA) -->
+  <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-2.5 pb-2.5 flex-1 flex flex-col min-h-0">
 
-    <!-- BARRA MINIMALISTA DE BÚSQUEDA Y FILTROS (SIN BOTÓN REDUNDANTE) -->
-    <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-2.5 mb-4">
+    <!-- BARRA DE BÚSQUEDA, FILTROS Y PAGINADOR RÁPIDO SUPERIOR -->
+    <div class="bg-white rounded-xl shadow-xs border border-slate-200 p-2 mb-2 flex-shrink-0">
       <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2">
         
         <!-- Campo de Búsqueda Rápida -->
@@ -319,11 +319,11 @@
         </div>
 
         <!-- Filtros desplegables instantáneos -->
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-1.5 flex-wrap">
           <select 
             id="filter-ubicacion" 
             onchange="applyFilters()" 
-            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 max-w-[170px]"
+            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 max-w-[160px]"
             title="Filtrar por ubicación física"
           >
             <option value="">Ubicación: Todas</option>
@@ -332,7 +332,7 @@
           <select 
             id="filter-categoria" 
             onchange="applyFilters()" 
-            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 max-w-[150px]"
+            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 max-w-[140px]"
             title="Filtrar por categoría"
           >
             <option value="">Categoría: Todas</option>
@@ -363,8 +363,8 @@
           </button>
         </div>
 
-        <!-- Divisor y Contador de Resultados / Filas -->
-        <div class="flex items-center justify-between md:justify-end gap-2.5 ml-auto border-t md:border-t-0 md:border-l border-slate-200 pt-1.5 md:pt-0 md:pl-2.5 text-xs">
+        <!-- Divisor, Contador de Resultados y Paginador Superior (Gmail) -->
+        <div class="flex items-center justify-between md:justify-end gap-2 ml-auto border-t md:border-t-0 md:border-l border-slate-200 pt-1.5 md:pt-0 md:pl-2 text-xs">
           <div class="flex items-center gap-1.5 whitespace-nowrap">
             <span id="results-count" class="font-semibold text-slate-700 text-[11px]">Cargando...</span>
             <span id="active-filter-badge" class="hidden px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 font-medium text-[10px]"></span>
@@ -378,15 +378,38 @@
               <option value="100">100</option>
             </select>
           </div>
+
+          <!-- Paginador Rápido Superior (Estilo Gmail) -->
+          <div class="flex items-center gap-1 border-l border-slate-200 pl-2">
+            <span id="top-page-info" class="text-[11px] text-slate-500 font-semibold whitespace-nowrap">0 de 0</span>
+            <div class="flex items-center space-x-0.5">
+              <button 
+                id="top-btn-prev" 
+                onclick="prevPage()" 
+                class="btn-pop-sm w-6 h-6 rounded-md hover:bg-slate-100 flex items-center justify-center text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition"
+                title="Página anterior"
+              >
+                <i class="fa-solid fa-chevron-left text-[10px]"></i>
+              </button>
+              <button 
+                id="top-btn-next" 
+                onclick="nextPage()" 
+                class="btn-pop-sm w-6 h-6 rounded-md hover:bg-slate-100 flex items-center justify-center text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-xs transition"
+                title="Página siguiente"
+              >
+                <i class="fa-solid fa-chevron-right text-[10px]"></i>
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>
     </div>
 
-    <!-- TABLA DE ACTIVOS -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+    <!-- TABLA DE ACTIVOS (EXPANSIÓN FLEXIBLE CENTRAL) -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
       <!-- BANNER DE SELECCIÓN CONTEXTUAL (ESTILO GMAIL) -->
-      <div id="selection-banner-gmail" class="hidden bg-amber-50/95 border-b border-amber-200 px-4 py-2.5 text-center text-xs text-amber-900 font-medium transition flex items-center justify-center gap-1.5 flex-wrap shadow-inner">
+      <div id="selection-banner-gmail" class="hidden bg-amber-50/95 border-b border-amber-200 px-4 py-2 text-center text-xs text-amber-900 font-medium transition flex items-center justify-center gap-1.5 flex-wrap shadow-inner flex-shrink-0">
         <i id="selection-banner-icon" class="fa-solid fa-circle-info text-amber-600 text-sm"></i>
         <span id="selection-banner-text">Se han seleccionado los 50 activos de esta página.</span>
         <button id="btn-banner-select-all" onclick="selectAllFilteredActivos()" class="font-bold text-amber-950 underline hover:text-amber-800 cursor-pointer ml-1 transition">
@@ -397,7 +420,8 @@
         </button>
       </div>
 
-      <div class="overflow-x-auto max-h-[70vh] overflow-y-auto relative">
+      <!-- CONTENEDOR CON SCROLL INTERNO ÚNICAMENTE (VERTICAL) Y SIN SCROLL HORIZONTAL -->
+      <div class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative" id="table-scroll-container">
         <table class="w-full text-left text-xs border-collapse">
           <thead class="bg-slate-100/95 backdrop-blur-xs text-slate-700 text-[11px] font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 shadow-xs">
             <tr>
@@ -405,14 +429,11 @@
                 <input type="checkbox" id="select-all" onclick="toggleSelectAll(this)" title="Seleccionar todos en esta página" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
               </th>
               <th scope="col" class="py-2.5 px-2 text-center w-12">Foto</th>
-              <th scope="col" class="py-2.5 px-3 whitespace-nowrap min-w-[110px]">Núm. Inventario</th>
-              <th scope="col" class="py-2.5 px-3 min-w-[190px] max-w-[240px]">Descripción</th>
-              <th scope="col" class="py-2.5 px-3 min-w-[150px] max-w-[180px]">Especificación</th>
-              <th scope="col" class="py-2.5 px-3 whitespace-nowrap min-w-[110px]">Núm. Serie</th>
-              <th scope="col" class="py-2.5 px-2.5 min-w-[90px] max-w-[120px]">Marca</th>
-              <th scope="col" class="py-2.5 px-2.5 min-w-[100px] max-w-[130px]">Modelo</th>
-              <th scope="col" class="py-2.5 px-3 min-w-[140px] max-w-[180px]">Ubicación</th>
-              <th scope="col" class="py-2.5 px-3 text-center min-w-[250px] whitespace-nowrap">Acciones</th>
+              <th scope="col" class="py-2.5 px-3 whitespace-nowrap w-36">Inventario / Serie</th>
+              <th scope="col" class="py-2.5 px-3 min-w-[200px]">Descripción</th>
+              <th scope="col" class="py-2.5 px-3 whitespace-nowrap w-36">Marca / Modelo</th>
+              <th scope="col" class="py-2.5 px-3 whitespace-nowrap w-44">Ubicación / Resguardante</th>
+              <th scope="col" class="py-2.5 px-3 text-center w-28 whitespace-nowrap">Acciones</th>
             </tr>
           </thead>
           <tbody id="activos-table-body" class="divide-y divide-slate-100 bg-white">
@@ -421,8 +442,8 @@
         </table>
       </div>
 
-      <!-- PAGINACIÓN -->
-      <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4">
+      <!-- PAGINACIÓN INFERIOR (COMPACTA Y FIJA) -->
+      <div class="py-2 px-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
         <div class="text-xs text-slate-500">
           Página <span id="current-page" class="font-bold text-slate-800">1</span> de <span id="total-pages" class="font-bold text-slate-800">1</span>
         </div>
@@ -430,14 +451,14 @@
           <button 
             id="btn-prev" 
             onclick="prevPage()" 
-            class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition"
+            class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition"
           >
             <i class="fa-solid fa-chevron-left mr-1"></i> Anterior
           </button>
           <button 
             id="btn-next" 
             onclick="nextPage()" 
-            class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition"
+            class="px-2.5 py-1 rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-medium transition"
           >
             Siguiente <i class="fa-solid fa-chevron-right ml-1"></i>
           </button>
@@ -1450,6 +1471,9 @@
     </div>
   </div>
 
+  <!-- MENÚ FLOTANTE DE ACCIONES RÁPIDAS DE FILA -->
+  <div id="row-action-menu" class="fixed hidden z-50 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[200px] text-xs transition animate-in fade-in zoom-in-95"></div>
+
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-xs font-medium translate-y-20 opacity-0 transition-all duration-300">
     <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
@@ -1457,6 +1481,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=9"></script>
+  <script src="/app.js?v=10"></script>
 </body>
 </html>

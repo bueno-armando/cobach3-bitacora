@@ -441,9 +441,10 @@ function renderTable(items) {
       }
     }
 
-    // Columna 3: Número de inventario (oficial si existe, o código interno si pendiente)
+    // Columna 3: Número de inventario (oficial si existe, o código interno si pendiente) y Serie
     let invHtml = '';
-    let btnAsignarTag = '';
+    const serieText = item.numero_serie ? `<div class="text-[9px] font-mono text-slate-400 truncate max-w-[130px] leading-tight" title="Serie: ${escapeHtml(item.numero_serie)}"><span class="text-slate-300">S:</span> ${escapeHtml(item.numero_serie)}</div>` : '';
+
     if (item.estatus_etiqueta === 'ETIQUETADO_OFICIAL' && item.codigo_oficial) {
       invHtml = `
         <div class="space-y-0.5">
@@ -451,6 +452,7 @@ function renderTable(items) {
             <i class="fa-solid fa-tag mr-1 text-emerald-600 text-[8px]"></i> #${item.codigo_oficial}
           </span>
           <div class="text-[10px] font-mono text-slate-400 leading-none">${item.codigo_interno}</div>
+          ${serieText}
         </div>
       `;
     } else {
@@ -462,20 +464,12 @@ function renderTable(items) {
           <div class="text-[9px] text-amber-700 font-semibold flex items-center gap-1 leading-none">
             <i class="fa-solid fa-clock text-[8px]"></i> Código pendiente
           </div>
+          ${serieText}
         </div>
-      `;
-      btnAsignarTag = `
-        <button 
-          onclick="openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')"
-          title="Registrar Etiqueta Verde Oficial" 
-          class="btn-pop-sm w-7.5 h-7.5 rounded-lg text-amber-800 bg-amber-100 hover:bg-amber-200 hover:text-amber-950 border border-amber-300 flex items-center justify-center transition text-xs shadow-xs"
-        >
-          <i class="fa-solid fa-tag"></i>
-        </button>
       `;
     }
 
-    // Badge sutil de origen / ubicación
+    // Badge sutil de origen
     let origenPill = '';
     if (item.origen === 'GASTO') {
       origenPill = '<span class="text-amber-700 font-bold">Gasto</span>';
@@ -485,137 +479,121 @@ function renderTable(items) {
       origenPill = '<span class="text-emerald-700 font-bold">D.G.</span>';
     }
 
+    // Columna 5: Marca / Modelo fusionados
+    const tieneMarcaModelo = item.marca || item.modelo;
+    const marcaModeloHtml = tieneMarcaModelo ? `
+      <div class="space-y-0.5 leading-tight">
+        ${item.marca ? `<div class="font-semibold text-slate-800 text-xs truncate max-w-[130px]" title="${escapeHtml(item.marca)}">${escapeHtml(item.marca)}</div>` : ''}
+        ${item.modelo ? `<div class="text-[10px] text-slate-500 truncate max-w-[130px]" title="${escapeHtml(item.modelo)}">${escapeHtml(item.modelo)}</div>` : ''}
+      </div>
+    ` : '<span class="text-slate-300 italic text-[11px]">-</span>';
+
+    // Columna 6: Ubicación / Resguardante fusionados
+    const ubicacionResguardanteHtml = `
+      <div class="space-y-0.5 leading-tight">
+        ${item.ubicacion ? `
+          <div class="flex items-center gap-1 text-slate-700 font-semibold text-xs truncate max-w-[160px]" title="${escapeHtml(item.ubicacion)}">
+            <i class="fa-solid fa-location-dot text-emerald-600 text-[10px] flex-shrink-0"></i>
+            <span class="truncate">${escapeHtml(item.ubicacion)}</span>
+          </div>
+        ` : '<span class="text-slate-300 italic text-[11px]">Sin asignar</span>'}
+        ${item.resguardante ? `
+          <div class="text-[10px] text-slate-400 truncate max-w-[160px]" title="Resguardante: ${escapeHtml(item.resguardante)}">
+            <i class="fa-solid fa-user text-[9px] text-slate-300 mr-0.5"></i> ${escapeHtml(item.resguardante)}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    // Botón de acción directa según rol
+    let btnAccionRol = '';
+    if (rol === 'admin') {
+      btnAccionRol = `
+        <button 
+          onclick="openEditModal(${item.id})"
+          title="Editar activo"
+          class="btn-pop-sm w-7 h-7 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-xs shadow-xs"
+        >
+          <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+      `;
+    } else if (rol === 'resguardo') {
+      btnAccionRol = `
+        <button 
+          onclick="openCondicionModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.condicion_actual || '')}', '${escapeHtml(item.estatus_activo || '')}', '${escapeHtml(item.ubicacion || '')}')"
+          title="Actualizar Condición / Reportar Desuso"
+          class="btn-pop-sm w-7 h-7 rounded-lg text-teal-700 bg-teal-50 hover:bg-teal-100 hover:text-teal-900 border border-teal-200/80 flex items-center justify-center transition text-xs shadow-xs"
+        >
+          <i class="fa-solid fa-clipboard-check"></i>
+        </button>
+      `;
+    }
+
     return `
       <tr class="hover:bg-emerald-50/40 transition text-xs border-b border-slate-100/80">
         <!-- 1. Checkbox Selección -->
-        <td class="py-2 px-2.5 text-center align-middle">
+        <td class="py-2 px-2.5 text-center align-middle w-10">
           <input type="checkbox" class="row-checkbox rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" data-id="${item.id}" ${isChecked} onchange="toggleRowSelection(${item.id}, this)">
         </td>
 
         <!-- 2. Foto -->
-        <td class="py-1.5 px-2 text-center align-middle">
+        <td class="py-1.5 px-2 text-center align-middle w-12">
           ${fotoHtml}
         </td>
 
-        <!-- 3. Número de Inventario -->
-        <td class="py-2 px-3 whitespace-nowrap align-middle">
+        <!-- 3. Número de Inventario / Serie -->
+        <td class="py-2 px-3 whitespace-nowrap align-middle w-36">
           ${invHtml}
         </td>
 
-        <!-- 4. Descripción -->
-        <td class="py-2 px-3 align-middle max-w-[220px]">
-          <div class="font-bold text-slate-800 leading-tight truncate text-xs" title="${escapeHtml(item.descripcion)}">
+        <!-- 4. Descripción y Especificación -->
+        <td class="py-2 px-3 align-middle min-w-[200px]">
+          <div class="font-bold text-slate-800 leading-tight text-xs" title="${escapeHtml(item.descripcion)}">
             ${escapeHtml(item.descripcion)}
           </div>
-          <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5 leading-none truncate">
+          ${item.especificacion ? `
+            <div class="text-slate-500 text-[11px] leading-snug truncate max-w-[340px] mt-0.5" title="${escapeHtml(item.especificacion)}">
+              ${escapeHtml(item.especificacion)}
+            </div>
+          ` : ''}
+          <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 leading-none flex-wrap">
             ${origenPill}
             ${getCondicionBadge(item.condicion_actual || item.condicion || item.condicion_dg)}
             ${item.tiene_discrepancia_dg ? '<span class="text-amber-700 bg-amber-100 px-1 py-0.5 rounded text-[9px] font-bold border border-amber-300" title="Discrepancia con D.G. (deterioro o baja)"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
           </div>
         </td>
 
-        <!-- 5. Especificación -->
-        <td class="py-2 px-3 align-middle max-w-[170px]">
-          ${item.especificacion ? `
-            <div class="text-slate-600 max-w-[160px] truncate leading-tight text-xs" title="${escapeHtml(item.especificacion)}">
-              ${escapeHtml(item.especificacion)}
-            </div>
-          ` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
+        <!-- 5. Marca / Modelo -->
+        <td class="py-2 px-2.5 align-middle whitespace-nowrap w-36">
+          ${marcaModeloHtml}
         </td>
 
-        <!-- 6. Número de Serie -->
-        <td class="py-2 px-3 font-mono whitespace-nowrap align-middle max-w-[120px]">
-          ${item.numero_serie ? `
-            <span class="text-slate-700 font-semibold bg-slate-100 px-1.5 py-0.5 rounded text-[10px] border border-slate-200 inline-block max-w-[110px] truncate" title="${escapeHtml(item.numero_serie)}">
-              ${escapeHtml(item.numero_serie)}
-            </span>
-          ` : '<span class="text-slate-300 italic text-[10px]">S/N</span>'}
+        <!-- 6. Ubicación / Resguardante -->
+        <td class="py-2 px-2.5 align-middle whitespace-nowrap w-44">
+          ${ubicacionResguardanteHtml}
         </td>
 
-        <!-- 7. Marca -->
-        <td class="py-2 px-2.5 align-middle max-w-[100px]">
-          ${item.marca ? `<span class="font-semibold text-slate-700 block truncate" title="${escapeHtml(item.marca)}">${escapeHtml(item.marca)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
-        </td>
-
-        <!-- 8. Modelo -->
-        <td class="py-2 px-2.5 align-middle max-w-[110px]">
-          ${item.modelo ? `<span class="text-slate-600 font-medium block truncate" title="${escapeHtml(item.modelo)}">${escapeHtml(item.modelo)}</span>` : '<span class="text-slate-300 italic text-[11px]">-</span>'}
-        </td>
-
-        <!-- 9. Ubicación -->
-        <td class="py-2 px-3 align-middle max-w-[170px]">
-          ${item.ubicacion ? `
-            <div class="flex items-center gap-1.5 text-slate-700 font-semibold max-w-[160px] min-w-0 text-xs" title="${escapeHtml(item.ubicacion)}">
-              <i class="fa-solid fa-location-dot text-emerald-600 text-[10px] flex-shrink-0"></i>
-              <span class="truncate min-w-0">${escapeHtml(item.ubicacion)}</span>
-            </div>
-          ` : '<span class="text-slate-300 italic text-[11px]">Sin asignar</span>'}
-        </td>
-
-        <!-- 10. Acciones -->
-        <td class="py-2 px-3 text-center whitespace-nowrap align-middle">
+        <!-- 7. Acciones -->
+        <td class="py-2 px-3 text-center whitespace-nowrap align-middle w-28">
           <div class="flex items-center justify-center gap-1">
             <button 
               onclick="openDetailModal(${item.id})"
-              title="Ver detalle completo"
-              class="btn-pop-sm w-8 h-8 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/80 flex items-center justify-center transition text-xs shadow-xs"
+              title="Ver ficha técnica"
+              class="btn-pop-sm w-7 h-7 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/80 flex items-center justify-center transition text-xs shadow-xs"
             >
               <i class="fa-solid fa-circle-info"></i>
             </button>
 
-            ${rol === 'admin' ? `
-              <button 
-                onclick="openEditModal(${item.id})"
-                title="Editar activo"
-                class="btn-pop-sm w-8 h-8 rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-900 border border-blue-200/80 flex items-center justify-center transition text-xs shadow-xs"
-              >
-                <i class="fa-solid fa-pen-to-square"></i>
-              </button>
-            ` : ''}
+            ${btnAccionRol}
 
-            ${(rol === 'admin' || rol === 'resguardo') ? `
-              <button 
-                onclick="openCondicionModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.condicion_actual || '')}', '${escapeHtml(item.estatus_activo || '')}', '${escapeHtml(item.ubicacion || '')}')"
-                title="Actualizar Condición / Reportar Desuso"
-                class="btn-pop-sm w-8 h-8 rounded-lg text-teal-700 bg-teal-50 hover:bg-teal-100 hover:text-teal-900 border border-teal-200/80 flex items-center justify-center transition text-xs shadow-xs"
-              >
-                <i class="fa-solid fa-clipboard-check"></i>
-              </button>
-              <button 
-                onclick="openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')"
-                title="Subir o cambiar fotografía"
-                class="btn-pop-sm w-8 h-8 rounded-lg text-purple-700 bg-purple-50 hover:bg-purple-100 hover:text-purple-900 border border-purple-200/80 flex items-center justify-center transition text-xs shadow-xs"
-              >
-                <i class="fa-solid fa-camera"></i>
-              </button>
-            ` : ''}
-
+            <!-- Menú Más Opciones (···) -->
             <button 
-              onclick="addSingleToQueue(${item.id})"
-              title="Agregar a Cola de Impresión"
-              class="btn-pop-sm w-8 h-8 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-200 flex items-center justify-center transition text-xs shadow-xs"
+              onclick="openRowActionMenu(${item.id}, event)"
+              title="Más opciones"
+              class="btn-pop-sm w-7 h-7 rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 border border-slate-300 flex items-center justify-center transition text-xs shadow-xs"
             >
-              <i class="fa-solid fa-folder-plus"></i>
+              <i class="fa-solid fa-ellipsis-vertical"></i>
             </button>
-            <button 
-              onclick="openPrintSingle(${item.id})"
-              title="Imprimir Etiqueta"
-              class="btn-pop-sm w-8 h-8 rounded-lg text-slate-800 bg-slate-100 hover:bg-slate-200 hover:text-slate-950 border border-slate-300 flex items-center justify-center transition text-xs shadow-xs"
-            >
-              <i class="fa-solid fa-print"></i>
-            </button>
-
-            ${rol === 'admin' ? btnAsignarTag : ''}
-
-            ${rol === 'admin' ? `
-              <button 
-                onclick="openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')"
-                title="Eliminar activo"
-                class="btn-pop-sm w-8 h-8 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-800 border border-red-200/80 flex items-center justify-center transition text-xs shadow-xs"
-              >
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            ` : ''}
           </div>
         </td>
       </tr>
@@ -732,6 +710,22 @@ function updatePaginationUI() {
   document.getElementById('btn-prev').disabled = state.page <= 1;
   document.getElementById('btn-next').disabled = state.page >= state.totalPages;
 
+  // Actualizar paginador rápido superior (patrón Gmail)
+  const topInfo = document.getElementById('top-page-info');
+  if (topInfo) {
+    if (state.totalItems === 0) {
+      topInfo.textContent = '0 de 0';
+    } else {
+      const start = (state.page - 1) * state.limit + 1;
+      const end = Math.min(state.page * state.limit, state.totalItems);
+      topInfo.textContent = `${start}-${end} de ${state.totalItems.toLocaleString()}`;
+    }
+  }
+  const topBtnPrev = document.getElementById('top-btn-prev');
+  if (topBtnPrev) topBtnPrev.disabled = state.page <= 1;
+  const topBtnNext = document.getElementById('top-btn-next');
+  if (topBtnNext) topBtnNext.disabled = state.page >= state.totalPages;
+
   const resultsSpan = document.getElementById('results-count');
   resultsSpan.textContent = `Mostrando ${state.totalItems.toLocaleString()} activos`;
 
@@ -754,6 +748,116 @@ function updatePaginationUI() {
     }
   }
   updateSelectedCountUI();
+}
+
+// -------------------------------------------------------------
+// MENÚ DE ACCIONES RÁPIDAS DE FILA (DROPDOWN COMPACTO)
+// -------------------------------------------------------------
+function closeRowActionMenu() {
+  const menu = document.getElementById('row-action-menu');
+  if (menu) {
+    menu.classList.add('hidden');
+    menu.innerHTML = '';
+  }
+}
+
+function openRowActionMenu(activoId, event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+
+  const item = state.activos.find(a => a.id === activoId);
+  if (!item) return;
+
+  const menu = document.getElementById('row-action-menu');
+  if (!menu) return;
+
+  const rol = state.user ? state.user.rol : 'consulta';
+  let menuHtml = '';
+
+  // 1. Acciones comunes
+  menuHtml += `
+    <button onclick="closeRowActionMenu(); openDetailModal(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2 text-slate-700 transition">
+      <i class="fa-solid fa-circle-info text-emerald-600 w-4"></i> Ver Ficha Técnica
+    </button>
+    <button onclick="closeRowActionMenu(); addSingleToQueue(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700 transition">
+      <i class="fa-solid fa-folder-plus text-slate-500 w-4"></i> Agregar a Cola
+    </button>
+    <button onclick="closeRowActionMenu(); openPrintSingle(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700 transition">
+      <i class="fa-solid fa-print text-slate-500 w-4"></i> Imprimir Etiqueta
+    </button>
+  `;
+
+  // 2. Acciones de Personal / Admin
+  if (rol === 'admin' || rol === 'resguardo') {
+    menuHtml += `
+      <div class="my-1 border-t border-slate-100"></div>
+      <button onclick="closeRowActionMenu(); openCondicionModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.condicion_actual || '')}', '${escapeHtml(item.estatus_activo || '')}', '${escapeHtml(item.ubicacion || '')}')" class="w-full text-left px-3 py-1.5 hover:bg-teal-50 hover:text-teal-900 flex items-center gap-2 text-slate-700 transition">
+        <i class="fa-solid fa-clipboard-check text-teal-600 w-4"></i> Condición / Desuso
+      </button>
+      <button onclick="closeRowActionMenu(); openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')" class="w-full text-left px-3 py-1.5 hover:bg-purple-50 hover:text-purple-900 flex items-center gap-2 text-slate-700 transition">
+        <i class="fa-solid fa-camera text-purple-600 w-4"></i> Subir / Cambiar Foto
+      </button>
+    `;
+  }
+
+  // 3. Acciones exclusivas de Admin
+  if (rol === 'admin') {
+    menuHtml += `
+      <div class="my-1 border-t border-slate-100"></div>
+      <button onclick="closeRowActionMenu(); openEditModal(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2 text-slate-700 transition">
+        <i class="fa-solid fa-pen-to-square text-blue-600 w-4"></i> Editar Activo
+      </button>
+    `;
+
+    if (item.estatus_etiqueta !== 'ETIQUETADO_OFICIAL') {
+      menuHtml += `
+        <button onclick="closeRowActionMenu(); openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')" class="w-full text-left px-3 py-1.5 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2 text-amber-800 font-semibold transition">
+          <i class="fa-solid fa-tag text-amber-600 w-4"></i> Asignar Etiqueta Verde
+        </button>
+      `;
+    }
+
+    menuHtml += `
+      <div class="my-1 border-t border-slate-100"></div>
+      <button onclick="closeRowActionMenu(); openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')" class="w-full text-left px-3 py-1.5 hover:bg-red-50 hover:text-red-900 flex items-center gap-2 text-red-600 transition">
+        <i class="fa-solid fa-trash text-red-600 w-4"></i> Eliminar Activo
+      </button>
+    `;
+  }
+
+  menu.innerHTML = menuHtml;
+
+  // Posicionar de forma inteligente para no salirse de pantalla
+  const menuWidth = 200;
+  const menuHeight = (rol === 'admin' ? 240 : 160);
+  
+  let left = event.clientX - menuWidth;
+  if (left < 10) left = event.clientX + 10;
+  
+  let top = event.clientY + 5;
+  if (top + menuHeight > window.innerHeight) {
+    top = event.clientY - menuHeight - 5;
+  }
+  if (top < 10) top = 10;
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  menu.classList.remove('hidden');
+}
+
+// Cerrar menú al hacer clic fuera o al hacer scroll en la tabla
+window.addEventListener('click', (e) => {
+  const menu = document.getElementById('row-action-menu');
+  if (menu && !menu.contains(e.target)) {
+    closeRowActionMenu();
+  }
+});
+
+const tableScrollContainer = document.getElementById('table-scroll-container');
+if (tableScrollContainer) {
+  tableScrollContainer.addEventListener('scroll', closeRowActionMenu);
 }
 
 // Pestañas

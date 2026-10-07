@@ -11,6 +11,8 @@ const state = {
   limit: 50,
   totalPages: 1,
   totalItems: 0,
+  activos: [],
+  currentItems: [],
   deletingId: null,
   rawCatalogos: { ubicaciones: [], categorias: [], resguardantes: [] },
   selectedIds: new Set(),
@@ -352,6 +354,8 @@ async function loadActivos() {
     if (!res.ok) throw new Error('Error en la petición');
     const data = await res.json();
 
+    state.activos = data.items || [];
+    state.currentItems = data.items || [];
     state.totalPages = data.total_pages;
     state.totalItems = data.total;
 
@@ -386,6 +390,8 @@ function getCondicionBadge(cond) {
 
 // Renderizar filas de la tabla con las columnas solicitadas
 function renderTable(items) {
+  state.activos = items || [];
+  state.currentItems = items || [];
   const tbody = document.getElementById('activos-table-body');
   
   if (!items || items.length === 0) {
@@ -758,6 +764,7 @@ function closeRowActionMenu() {
   if (menu) {
     menu.classList.add('hidden');
     menu.innerHTML = '';
+    delete menu.dataset.activoId;
   }
 }
 
@@ -767,25 +774,36 @@ function openRowActionMenu(activoId, event) {
     event.preventDefault();
   }
 
-  const item = state.activos.find(a => a.id === activoId);
-  if (!item) return;
-
   const menu = document.getElementById('row-action-menu');
   if (!menu) return;
 
+  // Toggle si se hace clic nuevamente en el mismo botón
+  if (!menu.classList.contains('hidden') && menu.dataset.activoId === String(activoId)) {
+    closeRowActionMenu();
+    return;
+  }
+
+  const items = state.activos || state.currentItems || [];
+  const item = items.find(a => a.id === activoId);
+  if (!item) {
+    console.warn('Activo no encontrado para menú:', activoId);
+    return;
+  }
+
+  menu.dataset.activoId = String(activoId);
   const rol = state.user ? state.user.rol : 'consulta';
   let menuHtml = '';
 
   // 1. Acciones comunes
   menuHtml += `
-    <button onclick="closeRowActionMenu(); openDetailModal(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2 text-slate-700 transition">
-      <i class="fa-solid fa-circle-info text-emerald-600 w-4"></i> Ver Ficha Técnica
+    <button onclick="closeRowActionMenu(); openDetailModal(${item.id})" class="w-full text-left px-3.5 py-2 hover:bg-emerald-50 hover:text-emerald-900 flex items-center gap-2.5 text-slate-700 font-medium transition cursor-pointer">
+      <i class="fa-solid fa-circle-info text-emerald-600 w-4 text-center"></i> Ver Ficha Técnica
     </button>
-    <button onclick="closeRowActionMenu(); addSingleToQueue(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700 transition">
-      <i class="fa-solid fa-folder-plus text-slate-500 w-4"></i> Agregar a Cola
+    <button onclick="closeRowActionMenu(); addSingleToQueue(${item.id})" class="w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2.5 text-slate-700 transition cursor-pointer">
+      <i class="fa-solid fa-folder-plus text-slate-500 w-4 text-center"></i> Agregar a Cola
     </button>
-    <button onclick="closeRowActionMenu(); openPrintSingle(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center gap-2 text-slate-700 transition">
-      <i class="fa-solid fa-print text-slate-500 w-4"></i> Imprimir Etiqueta
+    <button onclick="closeRowActionMenu(); openPrintSingle(${item.id})" class="w-full text-left px-3.5 py-2 hover:bg-slate-100 flex items-center gap-2.5 text-slate-700 transition cursor-pointer">
+      <i class="fa-solid fa-print text-slate-500 w-4 text-center"></i> Imprimir Etiqueta
     </button>
   `;
 
@@ -793,11 +811,11 @@ function openRowActionMenu(activoId, event) {
   if (rol === 'admin' || rol === 'resguardo') {
     menuHtml += `
       <div class="my-1 border-t border-slate-100"></div>
-      <button onclick="closeRowActionMenu(); openCondicionModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.condicion_actual || '')}', '${escapeHtml(item.estatus_activo || '')}', '${escapeHtml(item.ubicacion || '')}')" class="w-full text-left px-3 py-1.5 hover:bg-teal-50 hover:text-teal-900 flex items-center gap-2 text-slate-700 transition">
-        <i class="fa-solid fa-clipboard-check text-teal-600 w-4"></i> Condición / Desuso
+      <button onclick="closeRowActionMenu(); openCondicionModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.condicion_actual || '')}', '${escapeHtml(item.estatus_activo || '')}', '${escapeHtml(item.ubicacion || '')}')" class="w-full text-left px-3.5 py-2 hover:bg-teal-50 hover:text-teal-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-clipboard-check text-teal-600 w-4 text-center"></i> Condición / Desuso
       </button>
-      <button onclick="closeRowActionMenu(); openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')" class="w-full text-left px-3 py-1.5 hover:bg-purple-50 hover:text-purple-900 flex items-center gap-2 text-slate-700 transition">
-        <i class="fa-solid fa-camera text-purple-600 w-4"></i> Subir / Cambiar Foto
+      <button onclick="closeRowActionMenu(); openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')" class="w-full text-left px-3.5 py-2 hover:bg-purple-50 hover:text-purple-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-camera text-purple-600 w-4 text-center"></i> Subir / Cambiar Foto
       </button>
     `;
   }
@@ -806,39 +824,41 @@ function openRowActionMenu(activoId, event) {
   if (rol === 'admin') {
     menuHtml += `
       <div class="my-1 border-t border-slate-100"></div>
-      <button onclick="closeRowActionMenu(); openEditModal(${item.id})" class="w-full text-left px-3 py-1.5 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2 text-slate-700 transition">
-        <i class="fa-solid fa-pen-to-square text-blue-600 w-4"></i> Editar Activo
+      <button onclick="closeRowActionMenu(); openEditModal(${item.id})" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer">
+        <i class="fa-solid fa-pen-to-square text-blue-600 w-4 text-center"></i> Editar Activo
       </button>
     `;
 
     if (item.estatus_etiqueta !== 'ETIQUETADO_OFICIAL') {
       menuHtml += `
-        <button onclick="closeRowActionMenu(); openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')" class="w-full text-left px-3 py-1.5 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2 text-amber-800 font-semibold transition">
-          <i class="fa-solid fa-tag text-amber-600 w-4"></i> Asignar Etiqueta Verde
+        <button onclick="closeRowActionMenu(); openTagModal(${item.id}, '${item.codigo_interno}', '${escapeHtml(item.descripcion)}')" class="w-full text-left px-3.5 py-2 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2.5 text-amber-800 font-semibold transition cursor-pointer">
+          <i class="fa-solid fa-tag text-amber-600 w-4 text-center"></i> Asignar Etiqueta Verde
         </button>
       `;
     }
 
     menuHtml += `
       <div class="my-1 border-t border-slate-100"></div>
-      <button onclick="closeRowActionMenu(); openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')" class="w-full text-left px-3 py-1.5 hover:bg-red-50 hover:text-red-900 flex items-center gap-2 text-red-600 transition">
-        <i class="fa-solid fa-trash text-red-600 w-4"></i> Eliminar Activo
+      <button onclick="closeRowActionMenu(); openDeleteModal(${item.id}, '${escapeHtml(item.descripcion)}')" class="w-full text-left px-3.5 py-2 hover:bg-red-50 hover:text-red-900 flex items-center gap-2.5 text-red-600 transition cursor-pointer">
+        <i class="fa-solid fa-trash text-red-600 w-4 text-center"></i> Eliminar Activo
       </button>
     `;
   }
 
   menu.innerHTML = menuHtml;
 
-  // Posicionar de forma inteligente para no salirse de pantalla
-  const menuWidth = 200;
-  const menuHeight = (rol === 'admin' ? 240 : 160);
-  
-  let left = event.clientX - menuWidth;
-  if (left < 10) left = event.clientX + 10;
-  
-  let top = event.clientY + 5;
+  // Posicionar el menú usando las coordenadas exactas del botón
+  const btn = event ? (event.currentTarget || (event.target ? event.target.closest('button') : null)) : null;
+  const rect = btn ? btn.getBoundingClientRect() : null;
+  const menuWidth = 210;
+  const menuHeight = (rol === 'admin' ? 260 : 180);
+
+  let left = rect ? (rect.right - menuWidth) : (event ? event.clientX - menuWidth : 100);
+  let top = rect ? (rect.bottom + 4) : (event ? event.clientY + 5 : 100);
+
+  if (left < 10) left = 10;
   if (top + menuHeight > window.innerHeight) {
-    top = event.clientY - menuHeight - 5;
+    top = (rect ? rect.top : (event ? event.clientY : 100)) - menuHeight - 4;
   }
   if (top < 10) top = 10;
 
@@ -847,11 +867,13 @@ function openRowActionMenu(activoId, event) {
   menu.classList.remove('hidden');
 }
 
-// Cerrar menú al hacer clic fuera o al hacer scroll en la tabla
+// Cerrar menú al hacer clic fuera
 window.addEventListener('click', (e) => {
   const menu = document.getElementById('row-action-menu');
-  if (menu && !menu.contains(e.target)) {
-    closeRowActionMenu();
+  if (menu && !menu.classList.contains('hidden')) {
+    if (!menu.contains(e.target) && !e.target.closest('button[onclick*="openRowActionMenu"]')) {
+      closeRowActionMenu();
+    }
   }
 });
 

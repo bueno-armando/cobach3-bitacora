@@ -1755,7 +1755,33 @@
             <select id="modal-resguardo-select" onchange="onResguardanteSelectedChange()" class="w-full text-xs py-2 px-3 bg-white border border-slate-300 rounded-xl text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               <option value="">-- Seleccionar Resguardante --</option>
             </select>
-            <p id="modal-resguardo-puesto-preview" class="text-[11px] text-slate-500 mt-1.5 italic hidden"></p>
+            <!-- Campo editable para puesto institucional -->
+            <div id="modal-resguardo-puesto-container" class="mt-2.5 pt-2 border-t border-slate-200/80 space-y-1 hidden">
+              <label class="block text-[11px] font-semibold text-slate-600 flex items-center justify-between">
+                <span><i class="fa-solid fa-briefcase text-blue-600 mr-1"></i> Puesto institucional (Celda C10):</span>
+                <span id="modal-resguardo-puesto-badge" class="text-[10px] font-bold text-slate-400"></span>
+              </label>
+              <div class="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  id="modal-resguardo-puesto-input" 
+                  placeholder="Ej. DOCENTE, CONTROL ESCOLAR, LABORATORISTA..." 
+                  class="flex-1 text-xs py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-slate-800 uppercase focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+                />
+                <button 
+                  type="button" 
+                  id="btn-save-puesto-quick" 
+                  onclick="saveResguardantePuestoQuick()" 
+                  class="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1 btn-pop"
+                  title="Guardar este puesto en la base de datos"
+                >
+                  <i class="fa-solid fa-floppy-disk text-blue-600"></i> Guardar
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-400">
+                Puedes editar el puesto libremente; se imprimirá en el Excel y se guardará para futuras consultas.
+              </p>
+            </div>
           </div>
           <button type="button" onclick="downloadResguardoOficialFromModalSelect()" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 btn-pop shadow-xs">
             <i class="fa-solid fa-file-arrow-down"></i> Descargar Cédula del Resguardante
@@ -1824,7 +1850,8 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=14"></script>
+  <script src="/app.js?v=15"></script>
+
 </body>
 </html>
 

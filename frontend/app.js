@@ -2256,14 +2256,15 @@ function exportQueueToExcel() {
 // -------------------------------------------------------------
 // GENERACIÓN INSTITUCIONAL: FORMATO OFICIAL DE RESGUARDO (FOR-DAD_06)
 // -------------------------------------------------------------
-async function downloadResguardoOficial({ resguardante_id = null, activo_ids = null } = {}) {
+async function downloadResguardoOficial({ resguardante_id = null, activo_ids = null, puesto = null } = {}) {
   try {
     showToast('Generando Formato Oficial de Resguardo (FOR-DAD_06)...');
     const res = await authFetch('/api/reportes/resguardo-oficial', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ resguardante_id, activo_ids })
+      body: JSON.stringify({ resguardante_id, activo_ids, puesto })
     });
+
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
@@ -2296,11 +2297,10 @@ function openResguardoOficialModal() {
   if (!modal) return;
 
   const sel = document.getElementById('modal-resguardo-select');
-  const preview = document.getElementById('modal-resguardo-puesto-preview');
-  if (preview) {
-    preview.textContent = '';
-    preview.classList.add('hidden');
-  }
+  const puestoContainer = document.getElementById('modal-resguardo-puesto-container');
+  const puestoInput = document.getElementById('modal-resguardo-puesto-input');
+  if (puestoContainer) puestoContainer.classList.add('hidden');
+  if (puestoInput) puestoInput.value = '';
 
   if (sel && state.rawCatalogos?.resguardantes) {
     const prevVal = sel.value;
@@ -2341,23 +2341,79 @@ function closeResguardoOficialModal() {
 
 function onResguardanteSelectedChange() {
   const sel = document.getElementById('modal-resguardo-select');
-  const preview = document.getElementById('modal-resguardo-puesto-preview');
-  if (!sel || !preview) return;
+  const puestoContainer = document.getElementById('modal-resguardo-puesto-container');
+  const puestoInput = document.getElementById('modal-resguardo-puesto-input');
+  const puestoBadge = document.getElementById('modal-resguardo-puesto-badge');
+  if (!sel || !puestoContainer) return;
 
   const resgId = sel.value ? parseInt(sel.value, 10) : null;
   if (!resgId) {
-    preview.textContent = '';
-    preview.classList.add('hidden');
+    puestoContainer.classList.add('hidden');
+    if (puestoInput) puestoInput.value = '';
     return;
   }
 
   const resg = (state.rawCatalogos?.resguardantes || []).find(r => r.id === resgId);
+  puestoContainer.classList.remove('hidden');
+
   if (resg && resg.puesto) {
-    preview.innerHTML = `<i class="fa-solid fa-briefcase mr-1 text-blue-600"></i> Puesto registrado en D.G.: <strong>${escapeHtml(resg.puesto)}</strong>`;
-    preview.classList.remove('hidden');
+    if (puestoInput) puestoInput.value = resg.puesto;
+    if (puestoBadge) puestoBadge.innerHTML = '<span class="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">Asignado</span>';
   } else {
-    preview.innerHTML = `<i class="fa-solid fa-circle-question mr-1 text-amber-500"></i> Sin puesto registrado aún en catálogo oficial`;
-    preview.classList.remove('hidden');
+    if (puestoInput) puestoInput.value = '';
+    if (puestoBadge) puestoBadge.innerHTML = '<span class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Sin asignar aún</span>';
+  }
+}
+
+async function saveResguardantePuestoQuick() {
+  const sel = document.getElementById('modal-resguardo-select');
+  const input = document.getElementById('modal-resguardo-puesto-input');
+  const resgId = sel?.value ? parseInt(sel.value, 10) : null;
+  if (!resgId) {
+    showToast('Selecciona un resguardante primero', true);
+    return;
+  }
+  const puestoVal = input ? input.value.trim().toUpperCase() : '';
+  const btn = document.getElementById('btn-save-puesto-quick');
+  const origHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+  }
+  try {
+    const res = await authFetch(`/api/resguardantes/${resgId}/puesto`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ puesto: puestoVal })
+    });
+    if (!res.ok) throw new Error('Error al guardar el puesto');
+    const data = await res.json();
+    
+    // Actualizar en catálogo en memoria
+    const r = (state.rawCatalogos?.resguardantes || []).find(x => x.id === resgId);
+    if (r) r.puesto = data.puesto;
+
+    // Actualizar opción en dropdown
+    const opt = sel.querySelector(`option[value="${resgId}"]`);
+    if (opt && r) {
+      opt.textContent = r.puesto ? `${r.nombre} (${r.puesto})` : r.nombre;
+    }
+
+    const puestoBadge = document.getElementById('modal-resguardo-puesto-badge');
+    if (puestoBadge) {
+      puestoBadge.innerHTML = data.puesto 
+        ? '<span class="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">Asignado</span>'
+        : '<span class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">Sin asignar aún</span>';
+    }
+
+    showToast(`Puesto guardado: ${data.puesto || 'Sin puesto'}`);
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
   }
 }
 
@@ -2368,8 +2424,18 @@ function downloadResguardoOficialFromModalSelect() {
     showToast('Por favor selecciona un resguardante del listado', true);
     return;
   }
+  const input = document.getElementById('modal-resguardo-puesto-input');
+  const puestoVal = input?.value ? input.value.trim().toUpperCase() : null;
+
   closeResguardoOficialModal();
-  downloadResguardoOficial({ resguardante_id: resgId });
+
+  // Actualizar también en memoria si se proporcionó un puesto
+  if (puestoVal) {
+    const r = (state.rawCatalogos?.resguardantes || []).find(x => x.id === resgId);
+    if (r) r.puesto = puestoVal;
+  }
+
+  downloadResguardoOficial({ resguardante_id: resgId, puesto: puestoVal });
 }
 
 function downloadResguardoOficialFromModalQueue() {
@@ -2387,6 +2453,7 @@ function downloadResguardoOficialFromModalQueue() {
 function downloadResguardoOficialFromSelect() {
   downloadResguardoOficialFromModalSelect();
 }
+
 
 function downloadResguardoOficialFromQueue() {
   downloadResguardoOficialFromModalQueue();

@@ -16,7 +16,8 @@ TEMPLATE_PATH = os.path.join(BASE_DIR, "RESGUARDO DE BIENES MUEBLES (FORMATO).xl
 def generar_resguardo_oficial_excel(
     db: Session,
     resguardante_id: Optional[int] = None,
-    activo_ids: Optional[List[int]] = None
+    activo_ids: Optional[List[int]] = None,
+    puesto: Optional[str] = None
 ) -> io.BytesIO:
     """
     Genera el formato oficial institucional FOR-DAD_06 (Resguardo de Bienes Muebles)
@@ -39,7 +40,15 @@ def generar_resguardo_oficial_excel(
         if not resg:
             raise HTTPException(status_code=404, detail="Resguardante no encontrado")
         nombre_resguardante = resg.nombre.strip().upper()
-        puesto_resguardante = (resg.puesto or "").strip().upper()
+        
+        # Si se especificó un puesto manual o nuevo, actualizarlo en BD
+        if puesto and puesto.strip():
+            puesto_resguardante = puesto.strip().upper()
+            resg.puesto = puesto_resguardante
+            db.commit()
+        else:
+            puesto_resguardante = (resg.puesto or "").strip().upper()
+
         activos = query.filter(Activo.resguardante_id == resguardante_id).order_by(Activo.id.asc()).all()
     elif activo_ids:
         activos = query.filter(Activo.id.in_(activo_ids)).order_by(Activo.id.asc()).all()
@@ -48,9 +57,17 @@ def generar_resguardo_oficial_excel(
         if len(resg_set) == 1:
             r = list(resg_set)[0]
             nombre_resguardante = r.nombre.strip().upper()
-            puesto_resguardante = (r.puesto or "").strip().upper()
+            if puesto and puesto.strip():
+                puesto_resguardante = puesto.strip().upper()
+                r.puesto = puesto_resguardante
+                db.commit()
+            else:
+                puesto_resguardante = (r.puesto or "").strip().upper()
+        elif puesto and puesto.strip():
+            puesto_resguardante = puesto.strip().upper()
     else:
         raise HTTPException(status_code=400, detail="Debe especificar un resguardante_id o una lista de activo_ids.")
+
 
     if not activos:
         raise HTTPException(status_code=400, detail="No se encontraron activos para generar el resguardo.")

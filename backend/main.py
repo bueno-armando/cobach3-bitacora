@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from backend.database import get_db, engine, SessionLocal, ensure_schema_migrations
-from backend.models import Base, Usuario
+from backend.models import Base, Usuario, Resguardante
 import backend.crud as crud
 from backend.importer import import_excel_activos
 from backend.reportes import generar_resguardo_oficial_excel
@@ -40,8 +40,10 @@ from backend.schemas import (
     ImportExcelResponse,
     BitacoraResponse,
     PapeleraResponse,
-    GenerarResguardoRequest
+    GenerarResguardoRequest,
+    ActualizarPuestoRequest
 )
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
@@ -258,7 +260,8 @@ def export_resguardo_oficial(
     excel_stream = generar_resguardo_oficial_excel(
         db=db,
         resguardante_id=data.resguardante_id,
-        activo_ids=data.activo_ids
+        activo_ids=data.activo_ids,
+        puesto=data.puesto
     )
     date_str = datetime.date.today().strftime("%Y-%m-%d")
     filename = f"Resguardo_Oficial_FOR-DAD_06_{date_str}.xlsx"
@@ -271,6 +274,24 @@ def export_resguardo_oficial(
             "Access-Control-Expose-Headers": "Content-Disposition"
         }
     )
+
+
+@app.patch("/api/resguardantes/{resguardante_id}/puesto", summary="Actualizar puesto de un resguardante en catálogo")
+def update_resguardante_puesto(
+    resguardante_id: int,
+    data: ActualizarPuestoRequest,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
+    db: Session = Depends(get_db)
+):
+    resg = db.query(Resguardante).filter(Resguardante.id == resguardante_id).first()
+    if not resg:
+        raise HTTPException(status_code=404, detail="Resguardante no encontrado")
+    
+    nuevo_puesto = data.puesto.strip().upper() if (data.puesto and data.puesto.strip()) else None
+    resg.puesto = nuevo_puesto
+    db.commit()
+    return {"message": "Puesto actualizado correctamente", "resguardante_id": resg.id, "puesto": resg.puesto}
+
 
 
 @app.patch("/api/activos/{activo_id}/estatus-operativo", response_model=ActivoDetail, summary="Cambiar estado físico/operativo (Operativo, En Desuso, etc.)")

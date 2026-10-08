@@ -278,4 +278,10 @@ class PapeleraResponse(BaseModel):
 class GenerarResguardoRequest(BaseModel):
     resguardante_id: Optional[int] = None
     activo_ids: Optional[List[int]] = None
+    puesto: Optional[str] = None
+
+
+class ActualizarPuestoRequest(BaseModel):
+    puesto: str
+
 

@@ -152,3 +152,36 @@ def test_bitacora_endpoint_filters(auth_admin_client):
     assert "usuario_nombre" in first
     assert "fecha_hora" in first
 
+
+def test_patch_resguardante_puesto(auth_admin_client):
+    client = auth_admin_client
+    from backend.models import Resguardante
+    db = SessionLocal()
+    try:
+        r = db.query(Resguardante).first()
+        assert r is not None
+        rid = r.id
+        orig_puesto = r.puesto
+    finally:
+        db.close()
+
+    try:
+        res = client.patch(f"/api/resguardantes/{rid}/puesto", json={"puesto": "JEFE DE CONTROL ESCOLAR"})
+        assert res.status_code == 200
+        assert res.json()["puesto"] == "JEFE DE CONTROL ESCOLAR"
+
+        # Verificar reporte oficial con ese puesto
+        rep_res = client.post("/api/reportes/resguardo-oficial", json={"resguardante_id": rid})
+        assert rep_res.status_code == 200
+        wb = openpyxl.load_workbook(io.BytesIO(rep_res.content))
+        ws = wb.active
+        assert ws["C10"].value == "JEFE DE CONTROL ESCOLAR"
+    finally:
+        db2 = SessionLocal()
+        r2 = db2.query(Resguardante).filter(Resguardante.id == rid).first()
+        if r2:
+            r2.puesto = orig_puesto
+            db2.commit()
+        db2.close()
+
+

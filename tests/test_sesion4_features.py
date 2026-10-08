@@ -108,20 +108,32 @@ def test_resguardante_puesto_in_resguardo_excel(auth_admin_client):
     from backend.models import Resguardante
 
     db = SessionLocal()
+    prev_puesto = None
+    resg_id = None
     try:
         resg = db.query(Resguardante).first()
         assert resg is not None
+        prev_puesto = resg.puesto
         resg.puesto = "COORDINADOR DE LABORATORIOS TEST"
         db.commit()
         resg_id = resg.id
     finally:
         db.close()
 
-    res = client.post("/api/reportes/resguardo-oficial", json={"resguardante_id": resg_id})
-    assert res.status_code == 200
-    wb = openpyxl.load_workbook(io.BytesIO(res.content))
-    ws = wb.active
-    assert ws["C10"].value == "COORDINADOR DE LABORATORIOS TEST"
+    try:
+        res = client.post("/api/reportes/resguardo-oficial", json={"resguardante_id": resg_id})
+        assert res.status_code == 200
+        wb = openpyxl.load_workbook(io.BytesIO(res.content))
+        ws = wb.active
+        assert ws["C10"].value == "COORDINADOR DE LABORATORIOS TEST"
+    finally:
+        db2 = SessionLocal()
+        r = db2.query(Resguardante).filter(Resguardante.id == resg_id).first()
+        if r:
+            r.puesto = prev_puesto
+            db2.commit()
+        db2.close()
+
 
 
 

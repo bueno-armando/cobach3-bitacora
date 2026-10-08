@@ -57,17 +57,65 @@ def parse_directorio_html(html_path: str):
 
 
 
-def sync_puestos_to_db(html_path: str = "Directorio.html"):
-    if not os.path.exists(html_path):
-        print(f"Error: No se encontró el archivo '{html_path}'.")
-        return
+def parse_personal_pdf(pdf_path: str = "Personal.pdf"):
+    import subprocess
+    text = subprocess.check_output(["pdftotext", "-layout", pdf_path, "-"]).decode("utf-8")
+    lines = text.splitlines()
+
+    resultados = []
+    current_title = ""
+    current_unit = ""
+
+    for line in lines:
+        line_s = line.strip()
+        if not line_s or "COLEGIO DE BACHILLERES" in line_s or "Directorio" in line_s or "Hoja " in line_s:
+            continue
+        if any(header in line_s for header in ["PLANTEL NO.", "DIRECCIÓN GENERAL", "COORDINACIÓN", "CASA DE LA CULTURA", "GIMNASIO"]):
+            current_unit = line_s
+            continue
+        is_person = bool(re.match(r"^(Lic\.|Mtro\.|Mtra\.|Ing\.|Dr\.|Dra\.|C\.P\.|C\.|L\.D\.G\.|L\.A\.E\.|M\.S\.T\.|Blanca|Alba)\s+", line_s, re.I))
+        if is_person:
+            person_name = re.split(r"\s{3,}", line_s)[0].strip()
+            puesto = current_title
+            if "PLANTEL" in current_unit:
+                if puesto.upper() in ["DIRECTOR", "DIRECTORA"]:
+                    puesto = "DIRECTOR DE PLANTEL"
+                elif "SUBDIRECTOR" in puesto.upper():
+                    puesto = "SUBDIRECTOR DE PLANTEL"
+            resultados.append({
+                "nombre_original": person_name,
+                "nombre_norm": strip_accents_and_normalize(person_name),
+                "puesto": puesto,
+                "unidad": current_unit
+            })
+        else:
+            if not re.search(r"\d{3}\s+\d{3}|\.cobachih\.", line_s):
+                current_title = line_s
+
+    return resultados
+
+
+def sync_puestos_to_db(path: str = "Personal.pdf"):
+    if not os.path.exists(path):
+        if os.path.exists("Personal.pdf"):
+            path = "Personal.pdf"
+        elif os.path.exists("Directorio.html"):
+            path = "Directorio.html"
+        else:
+            print(f"Error: No se encontró '{path}'.")
+            return
 
     ensure_schema_migrations()
     db = SessionLocal()
 
     try:
-        registros_directorio = parse_directorio_html(html_path)
-        print(f"Total registros leídos de {html_path}: {len(registros_directorio)}")
+        if path.lower().endswith(".pdf"):
+            registros_directorio = parse_personal_pdf(path)
+        else:
+            registros_directorio = parse_directorio_html(path)
+
+        print(f"Total registros leídos de {path}: {len(registros_directorio)}")
+
 
         resguardantes = db.query(Resguardante).all()
         print(f"Total resguardantes en base de datos: {len(resguardantes)}\n")

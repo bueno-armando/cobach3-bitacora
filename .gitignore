@@ -14,5 +14,4 @@ dist/
 env/
 GUIA_REUNION_SISTEMAS.md
 MANUAL_WINDOWS.md
-uploads/*
-!uploads/.gitkeep
+

@@ -7,10 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from backend.database import get_db, engine, SessionLocal
+from backend.database import get_db, engine, SessionLocal, ensure_schema_migrations
 from backend.models import Base, Usuario
 import backend.crud as crud
 from backend.importer import import_excel_activos
+from backend.reportes import generar_resguardo_oficial_excel
+from backend.audit import registrar_bitacora
 from backend.auth import (
     hash_password,
     verify_password,
@@ -35,7 +37,10 @@ from backend.schemas import (
     TokenResponse,
     ActualizarCondicionRequest,
     BatchIdsRequest,
-    ImportExcelResponse
+    ImportExcelResponse,
+    BitacoraResponse,
+    PapeleraResponse,
+    GenerarResguardoRequest
 )
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -63,8 +68,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    """Garantiza la creación de tablas (incluyendo usuarios) y siembra cuentas iniciales."""
-    Base.metadata.create_all(bind=engine)
+    """Garantiza la creación de tablas, migraciones y siembra cuentas iniciales."""
+    ensure_schema_migrations(engine)
     db = SessionLocal()
     try:
         seed_default_users(db)
@@ -94,6 +99,14 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         )
 
     token = create_access_token(data={"sub": user.username, "rol": user.rol})
+
+    registrar_bitacora(
+        db=db,
+        usuario=user,
+        operacion="LOGIN",
+        detalles=f"Inicio de sesión exitoso como rol '{user.rol}'"
+    )
+
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -153,14 +166,13 @@ def get_activos_batch(
     return crud.get_activos_by_ids(db=db, ids=data.ids)
 
 
-
 @app.post("/api/activos", response_model=ActivoDetail, status_code=status.HTTP_201_CREATED, summary="Registrar nuevo activo")
 def create_activo(
     data: ActivoCreate,
     current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
     db: Session = Depends(get_db)
 ):
-    return crud.create_activo(db=db, data=data)
+    return crud.create_activo(db=db, data=data, current_user=current_user)
 
 
 @app.get("/api/activos/{activo_id}", response_model=ActivoDetail, summary="Detalle completo de un activo")
@@ -179,16 +191,86 @@ def update_activo(
     current_user: Usuario = Depends(require_roles(["admin"])),
     db: Session = Depends(get_db)
 ):
-    return crud.update_activo(db=db, activo_id=activo_id, data=data)
+    return crud.update_activo(db=db, activo_id=activo_id, data=data, current_user=current_user)
 
 
-@app.delete("/api/activos/{activo_id}", summary="Eliminar un activo")
+@app.delete("/api/activos/{activo_id}", summary="Mover activo a papelera de reciclaje")
 def delete_activo(
     activo_id: int,
     current_user: Usuario = Depends(require_roles(["admin"])),
     db: Session = Depends(get_db)
 ):
-    return crud.delete_activo(db=db, activo_id=activo_id)
+    return crud.delete_activo(db=db, activo_id=activo_id, current_user=current_user)
+
+
+@app.post("/api/activos/{activo_id}/restaurar", summary="Restaurar activo de la papelera")
+def restore_activo(
+    activo_id: int,
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
+    return crud.restore_activo(db=db, activo_id=activo_id, current_user=current_user)
+
+
+@app.delete("/api/activos/{activo_id}/permanente", summary="Eliminar activo definitivamente (purgar)")
+def purge_activo(
+    activo_id: int,
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
+    return crud.purge_activo(db=db, activo_id=activo_id, current_user=current_user)
+
+
+@app.get("/api/activos/papelera/lista", response_model=PapeleraResponse, summary="Listar activos en la papelera de reciclaje")
+def list_papelera(
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
+    return crud.get_papelera(db=db)
+
+
+@app.get("/api/bitacora", response_model=BitacoraResponse, summary="Consultar bitácora de auditoría del sistema")
+def get_bitacora_logs(
+    operacion: Optional[str] = Query(None, description="Filtrar por operación"),
+    usuario: Optional[str] = Query(None, description="Filtrar por nombre de usuario"),
+    q: Optional[str] = Query(None, description="Búsqueda en detalles o código"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=200),
+    current_user: Usuario = Depends(require_roles(["admin"])),
+    db: Session = Depends(get_db)
+):
+    return crud.get_bitacora(
+        db=db,
+        operacion=operacion,
+        usuario=usuario,
+        q=q,
+        page=page,
+        limit=limit
+    )
+
+
+@app.post("/api/reportes/resguardo-oficial", summary="Generar reporte institucional FOR-DAD_06 de Resguardo en Excel")
+def export_resguardo_oficial(
+    data: GenerarResguardoRequest,
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
+    db: Session = Depends(get_db)
+):
+    excel_stream = generar_resguardo_oficial_excel(
+        db=db,
+        resguardante_id=data.resguardante_id,
+        activo_ids=data.activo_ids
+    )
+    date_str = datetime.date.today().strftime("%Y-%m-%d")
+    filename = f"Resguardo_Oficial_FOR-DAD_06_{date_str}.xlsx"
+
+    return StreamingResponse(
+        excel_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
 
 
 @app.patch("/api/activos/{activo_id}/estatus-operativo", response_model=ActivoDetail, summary="Cambiar estado físico/operativo (Operativo, En Desuso, etc.)")
@@ -212,7 +294,7 @@ def update_activo_condicion(
         db=db,
         activo_id=activo_id,
         data=data,
-        usuario_nombre=current_user.nombre_completo or current_user.username
+        usuario=current_user
     )
 
 
@@ -223,7 +305,7 @@ def asignar_etiqueta(
     current_user: Usuario = Depends(require_roles(["admin"])),
     db: Session = Depends(get_db)
 ):
-    return crud.asignar_etiqueta_oficial(db=db, activo_id=activo_id, data=data)
+    return crud.asignar_etiqueta_oficial(db=db, activo_id=activo_id, data=data, usuario=current_user)
 
 
 @app.post("/api/activos/{activo_id}/imagen", response_model=ImagenUploadResponse, summary="Subir imagen de activo con opción de propagación a modelo")
@@ -255,17 +337,18 @@ async def upload_activo_imagen(
         activo_id=activo_id,
         imagen_url=imagen_url,
         propagate_model=propagate_model,
-        override_custom=override_custom
+        override_custom=override_custom,
+        usuario=current_user
     )
 
 
 @app.delete("/api/activos/{activo_id}/imagen", summary="Eliminar imagen asignada al activo")
 def delete_activo_imagen(
     activo_id: int,
-    current_user: Usuario = Depends(require_roles(["admin"])),
+    current_user: Usuario = Depends(require_roles(["admin", "resguardo"])),
     db: Session = Depends(get_db)
 ):
-    return crud.delete_activo_imagen(db=db, activo_id=activo_id)
+    return crud.delete_activo_imagen(db=db, activo_id=activo_id, usuario=current_user)
 
 
 @app.get("/api/catalogos", response_model=CatalogosResponse, summary="Obtener catálogos de ubicaciones, categorías y resguardantes")
@@ -356,7 +439,8 @@ async def import_excel(
             db=db,
             file_bytes=content,
             origen=origen,
-            filename=file.filename
+            filename=file.filename,
+            current_user=current_user
         )
         return resultado
     except Exception as e:

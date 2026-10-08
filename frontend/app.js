@@ -207,6 +207,16 @@ function applyRolePermissionsUI() {
       btnImport.classList.add('hidden');
     }
   }
+
+  // Cápsula de herramientas administrativas (Bitácora y Papelera): exclusivo de Administrador
+  const adminTools = document.getElementById('admin-tools-capsule');
+  if (adminTools) {
+    if (user.rol === 'admin') {
+      adminTools.classList.remove('hidden');
+    } else {
+      adminTools.classList.add('hidden');
+    }
+  }
 }
 
 async function checkSession() {
@@ -264,6 +274,10 @@ async function loadStats() {
     document.getElementById('stat-total').textContent = stats.total_activos.toLocaleString();
     document.getElementById('stat-oficial').textContent = stats.total_etiquetados.toLocaleString();
     document.getElementById('stat-pendientes').textContent = stats.total_pendientes.toLocaleString();
+    const papeleraBadge = document.getElementById('papelera-badge');
+    if (papeleraBadge) {
+      papeleraBadge.textContent = stats.total_papelera || 0;
+    }
   } catch (err) {
     console.error('Error cargando stats:', err);
   }
@@ -336,6 +350,7 @@ async function loadActivos() {
   if (state.categoria_id) params.append('categoria_id', state.categoria_id);
   if (state.condicion) params.append('condicion', state.condicion);
   if (state.estatus_activo) params.append('estatus_activo', state.estatus_activo);
+  if (state.discrepancias) params.append('discrepancias', 'true');
 
   if (state.tab === 'GASTO') {
     params.append('origen', 'GASTO');
@@ -420,7 +435,7 @@ function renderTable(items) {
           <img 
             src="${item.imagen_url}" 
             alt="Foto" 
-            onclick="openLightbox('${item.imagen_url}', '${captionText}', '${item.codigo_interno}', ${Boolean(item.es_foto_personalizada)})"
+            onclick="openLightbox('${item.imagen_url}', '${captionText}', '${item.codigo_interno}', ${Boolean(item.es_foto_personalizada)}, ${item.id}, '${escapeHtml(item.modelo || '')}')"
             class="w-8 h-8 rounded-lg object-cover cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-emerald-500 transition border border-slate-200 shadow-xs bg-slate-100"
             title="Clic para ver en tamaño completo"
           >
@@ -565,7 +580,7 @@ function renderTable(items) {
           <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 leading-none flex-wrap">
             ${origenPill}
             ${getCondicionBadge(item.condicion_actual || item.condicion || item.condicion_dg)}
-            ${item.tiene_discrepancia_dg ? '<span class="text-amber-700 bg-amber-100 px-1 py-0.5 rounded text-[9px] font-bold border border-amber-300" title="Discrepancia con D.G. (deterioro o baja)"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
+            ${item.tiene_discrepancia_dg ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs" title="Presenta discrepancia física o de estatus con Dirección General"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Discrepancia D.G.</span>' : ''}
           </div>
         </td>
 
@@ -817,6 +832,11 @@ function openRowActionMenu(activoId, event) {
       <button onclick="closeRowActionMenu(); openImageUploadModal(${item.id}, '${escapeHtml(item.descripcion)}', '${escapeHtml(item.modelo || '')}')" class="w-full text-left px-3.5 py-2 hover:bg-purple-50 hover:text-purple-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer">
         <i class="fa-solid fa-camera text-purple-600 w-4 text-center"></i> Subir / Cambiar Foto
       </button>
+      ${item.resguardante_id ? `
+        <button onclick="closeRowActionMenu(); downloadResguardoOficial({ resguardante_id: ${item.resguardante_id} })" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer" title="Generar cédula oficial de resguardo en Excel">
+          <i class="fa-solid fa-file-signature text-blue-600 w-4 text-center"></i> Resguardo Oficial
+        </button>
+      ` : ''}
     `;
   }
 
@@ -924,6 +944,8 @@ function applyFilters() {
   state.categoria_id = document.getElementById('filter-categoria').value;
   state.condicion = document.getElementById('filter-condicion')?.value || '';
   state.estatus_activo = document.getElementById('filter-estatus-operativo')?.value || '';
+  const discVal = document.getElementById('filter-discrepancia')?.value || '';
+  state.discrepancias = (discVal === 'con_discrepancia');
   state.page = 1;
 
   const clearBtn = document.getElementById('clear-search-btn');
@@ -944,6 +966,7 @@ function resetAllFilters() {
   document.getElementById('filter-ubicacion').value = '';
   document.getElementById('filter-categoria').value = '';
   if (document.getElementById('filter-condicion')) document.getElementById('filter-condicion').value = '';
+  if (document.getElementById('filter-discrepancia')) document.getElementById('filter-discrepancia').value = '';
   if (document.getElementById('filter-estatus-operativo')) document.getElementById('filter-estatus-operativo').value = '';
   document.getElementById('clear-search-btn').classList.add('hidden');
   state.q = '';
@@ -951,6 +974,7 @@ function resetAllFilters() {
   state.categoria_id = '';
   state.condicion = '';
   state.estatus_activo = '';
+  state.discrepancias = false;
   state.page = 1;
   clearSelection();
   loadActivos();
@@ -1165,7 +1189,7 @@ async function submitAssetForm(e) {
 // -------------------------------------------------------------
 function openDeleteModal(id, desc) {
   state.deletingId = id;
-  document.getElementById('modal-delete-desc').textContent = `¿Estás seguro de eliminar "${desc}"? Esta acción no se puede deshacer.`;
+  document.getElementById('modal-delete-desc').textContent = `¿Deseas enviar "${desc}" a la papelera de reciclaje? Podrás restaurarlo en cualquier momento o purgarlo definitivamente.`;
   document.getElementById('modal-delete').classList.remove('hidden');
 }
 
@@ -1181,11 +1205,11 @@ async function confirmDelete() {
 
   try {
     const res = await authFetch(`/api/activos/${state.deletingId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar');
+    if (!res.ok) throw new Error('Error al enviar a la papelera');
     closeDeleteModal();
     state.selectedIds.delete(state.deletingId);
     updateSelectedCountUI();
-    showToast('Activo eliminado correctamente');
+    showToast('Activo enviado a la papelera de reciclaje');
     await Promise.all([loadStats(), loadActivos()]);
   } catch (err) {
     showToast(err.message, true);
@@ -1257,6 +1281,14 @@ async function openDetailModal(id) {
         </button>
       `;
     }
+
+    if (a.resguardante_id && (rol === 'admin' || rol === 'resguardo')) {
+      detailButtons += `
+        <button onclick="downloadResguardoOficial({ resguardante_id: ${a.resguardante_id} })" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5" title="Generar y descargar Cédula Oficial FOR-DAD_06 en Excel">
+          <i class="fa-solid fa-file-signature"></i> Resguardo Oficial
+        </button>
+      `;
+    }
     actionsContainer.innerHTML = detailButtons;
 
     // 1. Tarjeta de Fotografía
@@ -1283,7 +1315,7 @@ async function openDetailModal(id) {
           <img 
             src="${a.imagen_url}" 
             alt="Foto del activo" 
-            onclick="openLightbox('${a.imagen_url}', '${escapeHtml(a.descripcion)}', '${a.codigo_interno}', ${Boolean(a.es_foto_personalizada)})"
+            onclick="openLightbox('${a.imagen_url}', '${escapeHtml(a.descripcion)}', '${a.codigo_interno}', ${Boolean(a.es_foto_personalizada)}, ${a.id}, '${escapeHtml(a.modelo || '')}')"
             class="w-20 h-20 rounded-xl object-cover cursor-pointer hover:opacity-90 hover:scale-105 transition border border-slate-200 shadow-sm bg-white flex-shrink-0"
             title="Clic para ver en tamaño completo"
           >
@@ -2067,7 +2099,7 @@ function selectDefaultExportCols() {
     'codigo_interno', 'codigo_oficial', 'descripcion', 'especificacion',
     'marca', 'modelo', 'numero_serie', 'ubicacion', 'categoria',
     'resguardante', 'origen', 'condicion_dg', 'condicion_actual',
-    'costo', 'estatus_activo', 'observaciones'
+    'costo', 'estatus_activo', 'observaciones', 'tiene_discrepancia'
   ]);
   document.querySelectorAll('input[name="export-col"]').forEach(cb => {
     cb.checked = defaultCols.has(cb.value);
@@ -2082,6 +2114,20 @@ function openExportModal() {
   const optQueue = document.getElementById('export-opt-queue');
   const queueCountEl = document.getElementById('export-queue-count');
 
+  // Llenar select de resguardantes para cédula oficial si está disponible
+  const resgSelect = document.getElementById('export-resguardo-select');
+  if (resgSelect && state.rawCatalogos?.resguardantes) {
+    const prevVal = resgSelect.value;
+    resgSelect.innerHTML = '<option value="">-- Seleccionar Resguardante --</option>';
+    state.rawCatalogos.resguardantes.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = r.nombre;
+      resgSelect.appendChild(opt);
+    });
+    if (prevVal) resgSelect.value = prevVal;
+  }
+
   // Detectar si hay filtros activos
   const hasFilter = Boolean(
     state.tab || 
@@ -2089,7 +2135,8 @@ function openExportModal() {
     state.ubicacion_id || 
     state.categoria_id || 
     state.condicion ||
-    state.estatus_activo
+    state.estatus_activo ||
+    state.discrepancias
   );
 
   if (hasFilter) {
@@ -2097,6 +2144,7 @@ function openExportModal() {
     let filterLabel = state.tab ? `Sección: ${state.tab}` : '';
     if (state.q && state.q.trim()) filterLabel += (filterLabel ? ' + ' : '') + `"${state.q.trim()}"`;
     if (state.condicion) filterLabel += (filterLabel ? ' + ' : '') + `Condición: ${state.condicion}`;
+    if (state.discrepancias) filterLabel += (filterLabel ? ' + ' : '') + 'Con Discrepancia D.G.';
     if (state.tab === 'PENDIENTES') filterLabel += ' (Pendientes)';
 
     filteredTitle.textContent = `Exportar Vista Filtrada (${(state.totalItems || 0).toLocaleString()} activos)`;
@@ -2110,8 +2158,14 @@ function openExportModal() {
   if (queueSize > 0) {
     optQueue.classList.remove('hidden');
     queueCountEl.textContent = queueSize;
+    const btnResgQueue = document.getElementById('btn-export-resguardo-queue');
+    const queueResgCount = document.getElementById('export-resguardo-queue-count');
+    if (btnResgQueue) btnResgQueue.classList.remove('hidden');
+    if (queueResgCount) queueResgCount.textContent = queueSize;
   } else {
     optQueue.classList.add('hidden');
+    const btnResgQueue = document.getElementById('btn-export-resguardo-queue');
+    if (btnResgQueue) btnResgQueue.classList.add('hidden');
   }
 
   modal.classList.remove('hidden');
@@ -2176,6 +2230,10 @@ function downloadExcelFiltered() {
     params.append('scope', 'DISCREPANCIAS_DG');
   }
 
+  if (state.discrepancias) {
+    params.append('discrepancias', 'true');
+  }
+
   if (state.ubicacion_id) params.append('ubicacion_id', state.ubicacion_id);
   if (state.categoria_id) params.append('categoria_id', state.categoria_id);
   if (state.condicion) params.append('condicion', state.condicion);
@@ -2215,14 +2273,77 @@ function exportQueueToExcel() {
 }
 
 // -------------------------------------------------------------
+// GENERACIÓN INSTITUCIONAL: FORMATO OFICIAL DE RESGUARDO (FOR-DAD_06)
+// -------------------------------------------------------------
+async function downloadResguardoOficial({ resguardante_id = null, activo_ids = null } = {}) {
+  try {
+    showToast('Generando Formato Oficial de Resguardo (FOR-DAD_06)...');
+    const res = await authFetch('/api/reportes/resguardo-oficial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resguardante_id, activo_ids })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Error al generar el formato de resguardo');
+    }
+
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    let filename = 'Resguardo_Oficial_FOR-DAD_06.xlsx';
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) filename = match[1];
+
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(blobUrl);
+    showToast('Cédula oficial descargada correctamente');
+  } catch (err) {
+    console.error('Error generando resguardo:', err);
+    showToast(err.message, true);
+  }
+}
+
+function downloadResguardoOficialFromSelect() {
+  const sel = document.getElementById('export-resguardo-select');
+  const resgId = sel?.value ? parseInt(sel.value, 10) : null;
+  if (!resgId) {
+    showToast('Por favor selecciona un resguardante del listado', true);
+    return;
+  }
+  closeExportModal();
+  downloadResguardoOficial({ resguardante_id: resgId });
+}
+
+function downloadResguardoOficialFromQueue() {
+  const queueSize = state.printQueue ? state.printQueue.size : 0;
+  if (queueSize === 0) {
+    showToast('La cola de activos está vacía', true);
+    return;
+  }
+  closeExportModal();
+  const ids = Array.from(state.printQueue.keys());
+  downloadResguardoOficial({ activo_ids: ids });
+}
+
+// -------------------------------------------------------------
 // VISOR DE IMÁGENES EN ALTA RESOLUCIÓN (LIGHTBOX)
 // -------------------------------------------------------------
-function openLightbox(url, caption, code, isCustom) {
+function openLightbox(url, caption, code, isCustom, activoId = null, modelo = '') {
+  state.currentLightbox = { url, caption, code, isCustom, activoId, modelo };
   const modal = document.getElementById('modal-lightbox');
   const img = document.getElementById('lightbox-img');
   const captionEl = document.getElementById('lightbox-caption');
   const badgeEl = document.getElementById('lightbox-badge');
   const downloadBtn = document.getElementById('lightbox-download');
+  const btnChange = document.getElementById('lightbox-btn-change');
+  const btnDelete = document.getElementById('lightbox-btn-delete');
 
   img.src = url;
   captionEl.textContent = caption || 'Fotografía de Activo';
@@ -2237,6 +2358,17 @@ function openLightbox(url, caption, code, isCustom) {
 
   downloadBtn.href = url;
   downloadBtn.setAttribute('download', `activo_${code || 'foto'}.jpg`);
+
+  const canEdit = state.user && (state.user.rol === 'admin' || state.user.rol === 'resguardo') && activoId;
+  if (btnChange) {
+    if (canEdit) btnChange.classList.remove('hidden');
+    else btnChange.classList.add('hidden');
+  }
+  if (btnDelete) {
+    if (canEdit) btnDelete.classList.remove('hidden');
+    else btnDelete.classList.add('hidden');
+  }
+
   modal.classList.remove('hidden');
 }
 
@@ -2245,13 +2377,45 @@ function closeLightbox() {
   if (modal) modal.classList.add('hidden');
 }
 
+function changePhotoFromLightbox() {
+  if (!state.currentLightbox?.activoId) return;
+  const { activoId, caption, modelo } = state.currentLightbox;
+  closeLightbox();
+  openImageUploadModal(activoId, caption, modelo);
+}
+
+async function deletePhotoFromLightbox() {
+  if (!state.currentLightbox?.activoId) return;
+  const { activoId } = state.currentLightbox;
+  if (!confirm('¿Deseas quitar la fotografía asignada a este activo?')) return;
+  try {
+    const res = await authFetch(`/api/activos/${activoId}/imagen`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) throw new Error('Error al eliminar la foto');
+    showToast('Fotografía eliminada');
+    closeLightbox();
+    const detailModal = document.getElementById('modal-detail');
+    if (detailModal && !detailModal.classList.contains('hidden')) {
+      openDetailModal(activoId);
+    }
+    await loadActivos();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
 // -------------------------------------------------------------
 // SUBIDA Y GESTIÓN DE FOTOGRAFÍAS
 // -------------------------------------------------------------
 function openImageUploadModal(activoId, desc, modelo) {
   document.getElementById('upload-activo-id').value = activoId;
   document.getElementById('upload-modal-subtitle').textContent = desc;
-  document.getElementById('input-image-file').value = '';
+  const fileInput = document.getElementById('input-image-file');
+  if (fileInput) fileInput.value = '';
+  const camInput = document.getElementById('input-image-camera');
+  if (camInput) camInput.value = '';
+
   document.getElementById('dropzone-empty').classList.remove('hidden');
   document.getElementById('dropzone-preview-container').classList.add('hidden');
   document.getElementById('upload-error').classList.add('hidden');
@@ -2281,6 +2445,14 @@ function previewSelectedImage(input) {
   const file = input.files && input.files[0];
   if (!file) return;
 
+  if (input.id === 'input-image-camera') {
+    const std = document.getElementById('input-image-file');
+    if (std) std.value = '';
+  } else if (input.id === 'input-image-file') {
+    const cam = document.getElementById('input-image-camera');
+    if (cam) cam.value = '';
+  }
+
   const reader = new FileReader();
   reader.onload = function(e) {
     const previewImg = document.getElementById('dropzone-preview');
@@ -2295,18 +2467,20 @@ async function submitImageUpload(e) {
   e.preventDefault();
   const activoId = document.getElementById('upload-activo-id').value;
   const fileInput = document.getElementById('input-image-file');
+  const cameraInput = document.getElementById('input-image-camera');
+  const file = (fileInput?.files && fileInput.files[0]) || (cameraInput?.files && cameraInput.files[0]);
   const errorDiv = document.getElementById('upload-error');
   const btnSave = document.getElementById('btn-save-image');
   const propagate = document.getElementById('check-propagate-model').checked;
 
-  if (!fileInput.files || fileInput.files.length === 0) {
-    errorDiv.textContent = 'Por favor selecciona o arrastra una imagen antes de guardar.';
+  if (!file) {
+    errorDiv.textContent = 'Por favor selecciona o toma una imagen antes de guardar.';
     errorDiv.classList.remove('hidden');
     return;
   }
 
   const formData = new FormData();
-  formData.append('file', fileInput.files[0]);
+  formData.append('file', file);
   formData.append('propagate_model', propagate ? 'true' : 'false');
   formData.append('override_custom', 'false'); // BLINDAJE: nunca sobreescribir fotos particulares
 
@@ -2572,5 +2746,278 @@ async function submitImportExcel(e) {
     btn.disabled = false;
     btn.innerHTML = '<i class="fa-solid fa-file-arrow-up"></i> Reintentar Importación';
     showToast(err.message || 'Error en la importación', true);
+  }
+}
+
+// =============================================================
+// FORMATO DE FECHA Y HORA
+// =============================================================
+function formatDateTime(dateStr) {
+  if (!dateStr) return '-';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleString('es-MX', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+// =============================================================
+// MÓDULO: PAPELERA DE RECICLAJE (SOFT-DELETE)
+// =============================================================
+function openPapeleraModal() {
+  const modal = document.getElementById('modal-papelera');
+  if (modal) {
+    modal.classList.remove('hidden');
+    loadPapelera();
+  }
+}
+
+function closePapeleraModal() {
+  const modal = document.getElementById('modal-papelera');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function loadPapelera() {
+  const loading = document.getElementById('papelera-loading');
+  const empty = document.getElementById('papelera-empty');
+  const tbody = document.getElementById('papelera-table-body');
+  const countText = document.getElementById('papelera-count-text');
+  const badge = document.getElementById('papelera-badge');
+
+  if (loading) loading.classList.remove('hidden');
+  if (empty) empty.classList.add('hidden');
+  if (tbody) tbody.innerHTML = '';
+
+  try {
+    const res = await authFetch('/api/activos/papelera/lista');
+    if (!res.ok) throw new Error('Error al cargar la papelera');
+    const data = await res.json();
+    const items = data.items || [];
+    const total = data.total || 0;
+
+    if (countText) countText.textContent = `${total} activo(s) en papelera`;
+    if (badge) badge.textContent = total;
+
+    if (items.length === 0) {
+      if (empty) empty.classList.remove('hidden');
+    } else {
+      if (empty) empty.classList.add('hidden');
+      if (tbody) {
+        tbody.innerHTML = items.map(item => `
+          <tr class="hover:bg-red-50/30 transition text-xs border-b border-slate-100">
+            <td class="py-2.5 px-3.5 whitespace-nowrap">
+              <span class="font-mono font-bold text-slate-800">
+                ${item.codigo_oficial ? '#' + escapeHtml(item.codigo_oficial) : escapeHtml(item.codigo_interno)}
+              </span>
+              ${item.numero_serie ? `<div class="text-[10px] text-slate-400 font-mono">S: ${escapeHtml(item.numero_serie)}</div>` : ''}
+            </td>
+            <td class="py-2.5 px-3.5">
+              <div class="font-bold text-slate-800 leading-snug">${escapeHtml(item.descripcion)}</div>
+              <div class="text-[11px] text-slate-500">${escapeHtml(item.marca || '')} ${escapeHtml(item.modelo || '')}</div>
+            </td>
+            <td class="py-2.5 px-3.5">
+              <div class="text-slate-700 font-medium">${escapeHtml(item.ubicacion || 'Sin ubicación')}</div>
+              <div class="text-[10px] text-slate-400">${escapeHtml(item.resguardante || 'Sin resguardante')}</div>
+            </td>
+            <td class="py-2.5 px-3.5 whitespace-nowrap">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                <i class="fa-solid fa-user text-[9px] text-slate-400"></i> ${escapeHtml(item.deleted_by || 'Admin')}
+              </span>
+            </td>
+            <td class="py-2.5 px-3.5 whitespace-nowrap text-[11px] text-slate-500">
+              ${formatDateTime(item.deleted_at)}
+            </td>
+            <td class="py-2.5 px-3.5 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1.5">
+                <button 
+                  onclick="restoreActivo(${item.id})" 
+                  class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition shadow-xs flex items-center gap-1 btn-pop"
+                  title="Restaurar a la lista activa"
+                >
+                  <i class="fa-solid fa-rotate-left"></i> Restaurar
+                </button>
+                <button 
+                  onclick="purgeActivo(${item.id}, '${escapeHtml(item.descripcion)}')" 
+                  class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-[11px] transition shadow-xs flex items-center gap-1 btn-pop"
+                  title="Eliminar permanentemente de la base de datos"
+                >
+                  <i class="fa-solid fa-trash-can"></i> Purgar
+                </button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+  } catch (err) {
+    console.error('Error en papelera:', err);
+    showToast(err.message, true);
+  } finally {
+    if (loading) loading.classList.add('hidden');
+  }
+}
+
+async function restoreActivo(id) {
+  try {
+    const res = await authFetch(`/api/activos/${id}/restaurar`, { method: 'POST' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || 'Error al restaurar el activo');
+    }
+    showToast('Activo restaurado al inventario activo');
+    await Promise.all([loadPapelera(), loadStats(), loadActivos()]);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function purgeActivo(id, desc) {
+  const confirmMsg = desc 
+    ? `¿Estás COMPLETAMENTE SEGURO de eliminar DEFINITIVAMENTE "${desc}"?\n\nEsta acción borrará el registro de la base de datos de manera irreversible.`
+    : `¿Estás COMPLETAMENTE SEGURO de eliminar DEFINITIVAMENTE este activo?\n\nEsta acción es irreversible.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await authFetch(`/api/activos/${id}/permanente`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || 'Error al purgar el activo');
+    }
+    showToast('Activo purgado permanentemente');
+    await Promise.all([loadPapelera(), loadStats()]);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+// =============================================================
+// MÓDULO: BITÁCORA DE AUDITORÍA
+// =============================================================
+state.bitacoraPage = 1;
+
+function openBitacoraModal() {
+  const modal = document.getElementById('modal-bitacora');
+  if (modal) {
+    modal.classList.remove('hidden');
+    loadBitacora(1);
+  }
+}
+
+function closeBitacoraModal() {
+  const modal = document.getElementById('modal-bitacora');
+  if (modal) modal.classList.add('hidden');
+}
+
+function getBitacoraOpBadge(op) {
+  const map = {
+    'CREACION': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    'EDICION': 'bg-blue-100 text-blue-800 border-blue-300',
+    'CONDICION': 'bg-teal-100 text-teal-800 border-teal-300',
+    'FOTO': 'bg-purple-100 text-purple-800 border-purple-300',
+    'ETIQUETA': 'bg-emerald-100 text-emerald-900 border-emerald-400 font-bold',
+    'ELIMINACION': 'bg-rose-100 text-rose-800 border-rose-300',
+    'RESTAURACION': 'bg-sky-100 text-sky-800 border-sky-300',
+    'PURGAR_PERMANENTE': 'bg-red-200 text-red-900 border-red-400 font-bold',
+    'IMPORTACION': 'bg-indigo-100 text-indigo-800 border-indigo-300',
+    'LOGIN': 'bg-slate-100 text-slate-700 border-slate-300'
+  };
+  const cls = map[op] || 'bg-slate-100 text-slate-700 border-slate-200';
+  return `<span class="px-2 py-0.5 rounded text-[10px] font-bold border ${cls}">${escapeHtml(op)}</span>`;
+}
+
+async function loadBitacora(page = 1) {
+  state.bitacoraPage = page;
+  const loading = document.getElementById('bitacora-loading');
+  const empty = document.getElementById('bitacora-empty');
+  const tbody = document.getElementById('bitacora-table-body');
+  const info = document.getElementById('bitacora-total-info');
+  const pagination = document.getElementById('bitacora-pagination');
+
+  const op = document.getElementById('bitacora-filter-op')?.value || '';
+  const q = document.getElementById('bitacora-search-input')?.value.trim() || '';
+
+  if (loading) loading.classList.remove('hidden');
+  if (empty) empty.classList.add('hidden');
+  if (tbody) tbody.innerHTML = '';
+
+  const params = new URLSearchParams({
+    page: page,
+    limit: 25
+  });
+  if (op) params.append('operacion', op);
+  if (q) params.append('q', q);
+
+  try {
+    const res = await authFetch(`/api/bitacora?${params.toString()}`);
+    if (!res.ok) throw new Error('Error al consultar la bitácora');
+    const data = await res.json();
+    const items = data.items || [];
+    const total = data.total || 0;
+    const pages = data.pages || 1;
+
+    if (info) {
+      info.textContent = `Total: ${total.toLocaleString()} eventos (Página ${data.page} de ${pages})`;
+    }
+
+    if (items.length === 0) {
+      if (empty) empty.classList.remove('hidden');
+    } else {
+      if (empty) empty.classList.add('hidden');
+      if (tbody) {
+        tbody.innerHTML = items.map(log => `
+          <tr class="hover:bg-slate-50 transition text-xs border-b border-slate-100">
+            <td class="py-2.5 px-3.5 whitespace-nowrap text-slate-600 font-medium">
+              ${formatDateTime(log.fecha_hora)}
+            </td>
+            <td class="py-2.5 px-3.5 whitespace-nowrap">
+              <div class="font-bold text-slate-800">${escapeHtml(log.usuario)}</div>
+              <div class="text-[10px] text-slate-400 uppercase tracking-wider">${escapeHtml(log.rol_usuario || 'admin')}</div>
+            </td>
+            <td class="py-2.5 px-3.5 whitespace-nowrap">
+              ${getBitacoraOpBadge(log.operacion)}
+            </td>
+            <td class="py-2.5 px-3.5 whitespace-nowrap">
+              ${log.codigo_activo ? `<span class="font-mono font-bold text-slate-800">#${escapeHtml(log.codigo_activo)}</span>` : (log.activo_id ? `<span class="font-mono text-slate-500">ID #${log.activo_id}</span>` : '<span class="text-slate-300">-</span>')}
+            </td>
+            <td class="py-2.5 px-3.5 text-slate-700 leading-snug">
+              ${escapeHtml(log.detalles)}
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // Paginación
+    if (pagination) {
+      pagination.innerHTML = `
+        <button 
+          onclick="loadBitacora(${page - 1})" 
+          ${page <= 1 ? 'disabled class="px-2.5 py-1 text-slate-300 border border-slate-200 rounded-lg cursor-not-allowed"' : 'class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg transition btn-pop"'}
+        >
+          <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        </button>
+        <span class="px-2 text-slate-600 font-semibold text-xs">Pág. ${page} / ${pages}</span>
+        <button 
+          onclick="loadBitacora(${page + 1})" 
+          ${page >= pages ? 'disabled class="px-2.5 py-1 text-slate-300 border border-slate-200 rounded-lg cursor-not-allowed"' : 'class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg transition btn-pop"'}
+        >
+          <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </button>
+      `;
+    }
+  } catch (err) {
+    console.error('Error en bitácora:', err);
+    showToast(err.message, true);
+  } finally {
+    if (loading) loading.classList.add('hidden');
   }
 }

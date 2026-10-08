@@ -25,3 +25,23 @@ def get_db():
     finally:
         db.close()
 
+
+def ensure_schema_migrations(eng=engine):
+    """Verifica y aplica migraciones ligeras de columnas para SQLite / PostgreSQL."""
+    from sqlalchemy import inspect, text
+    inspector = inspect(eng)
+    table_names = inspector.get_table_names()
+    
+    # Crear tablas faltantes (incluyendo bitacora_logs)
+    Base.metadata.create_all(bind=eng)
+
+    if "activos" in table_names:
+        cols = [c["name"] for c in inspector.get_columns("activos")]
+        with eng.connect() as conn:
+            if "deleted_at" not in cols:
+                conn.execute(text("ALTER TABLE activos ADD COLUMN deleted_at DATETIME"))
+                conn.commit()
+            if "deleted_by" not in cols:
+                conn.execute(text("ALTER TABLE activos ADD COLUMN deleted_by VARCHAR(100)"))
+                conn.commit()
+

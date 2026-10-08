@@ -208,13 +208,40 @@
 
       <!-- Lado Derecho: Indicador de Activos Arriba, Botones Abajo -->
       <div class="flex flex-col items-start sm:items-end gap-1.5">
-        <!-- Indicador de Activos Totales, Oficiales y Pendientes -->
-        <div class="bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-0.5 flex items-center gap-2 sm:gap-3 text-xs">
-          <span class="text-slate-300">Total: <strong id="stat-total" class="text-white font-bold">-</strong></span>
-          <span class="text-emerald-700">•</span>
-          <span class="text-emerald-300">Oficiales: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
-          <span class="text-emerald-700">•</span>
-          <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
+        <!-- Nivel Superior: Indicador de Activos y Herramientas Admin (Bitácora y Papelera) -->
+        <div class="flex items-center gap-2">
+          <!-- Indicador de Activos Totales, Oficiales y Pendientes -->
+          <div class="bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-0.5 flex items-center gap-2 sm:gap-3 text-xs">
+            <span class="text-slate-300">Total: <strong id="stat-total" class="text-white font-bold">-</strong></span>
+            <span class="text-emerald-700">•</span>
+            <span class="text-emerald-300">Oficiales: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
+            <span class="text-emerald-700">•</span>
+            <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
+          </div>
+
+          <!-- Herramientas Administrativas: Bitácora y Papelera -->
+          <div id="admin-tools-capsule" class="hidden flex items-center gap-1.5">
+            <button 
+              onclick="openBitacoraModal()" 
+              id="btn-open-bitacora"
+              class="btn-pop px-2.5 py-0.5 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-700 text-emerald-200 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs"
+              title="Consultar bitácora de auditoría"
+            >
+              <i class="fa-solid fa-clock-rotate-left text-[11px] text-emerald-400"></i>
+              <span class="hidden md:inline">Bitácora</span>
+            </button>
+
+            <button 
+              onclick="openPapeleraModal()" 
+              id="btn-open-papelera"
+              class="btn-pop px-2.5 py-0.5 bg-red-950/60 hover:bg-red-900/80 border border-red-800/80 text-red-200 hover:text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs"
+              title="Abrir papelera de activos eliminados"
+            >
+              <i class="fa-solid fa-trash-can text-[11px] text-red-400"></i>
+              <span class="hidden md:inline">Papelera</span>
+              <span id="papelera-badge" class="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full min-w-[16px] text-center leading-none">0</span>
+            </button>
+          </div>
         </div>
 
         <!-- Botones de Cola y Exportar (Abajo del indicador de activos) -->
@@ -349,6 +376,16 @@
             <option value="Buena">🟢 Buena</option>
             <option value="Mala / Regular">🟡 Mala / Regular</option>
             <option value="Pésima">🔴 Pésima</option>
+          </select>
+
+          <select 
+            id="filter-discrepancia" 
+            onchange="applyFilters()" 
+            class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 font-medium"
+            title="Filtrar por discrepancia de estatus o condición con Dirección General"
+          >
+            <option value="">Discrepancia: Todas</option>
+            <option value="con_discrepancia">⚠️ Con Discrepancia D.G.</option>
           </select>
 
           <!-- Botón Restablecer / Limpiar Filtros -->
@@ -871,6 +908,10 @@
               <i class="fa-solid fa-layer-group text-emerald-600"></i> Lista de Activos a Imprimir
             </h4>
             <div class="flex items-center gap-2">
+              <button onclick="downloadResguardoOficialFromQueue()" class="text-xs text-blue-700 hover:text-blue-900 font-semibold transition flex items-center gap-1 btn-pop" title="Descargar Cédula Oficial FOR-DAD_06 de los activos en la cola">
+                <i class="fa-solid fa-file-signature text-blue-600"></i> Resguardo Oficial
+              </button>
+              <span class="text-slate-300">|</span>
               <button onclick="exportQueueToExcel()" class="text-xs text-emerald-700 hover:text-emerald-900 font-semibold transition flex items-center gap-1 btn-pop">
                 <i class="fa-solid fa-file-excel"></i> Descargar Excel
               </button>
@@ -1038,6 +1079,10 @@
               <input type="checkbox" name="export-col" value="observaciones" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
               <span>Comentarios</span>
             </label>
+            <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
+              <input type="checkbox" name="export-col" value="tiene_discrepancia" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+              <span class="font-semibold text-amber-800">Discrepancia D.G.</span>
+            </label>
           </div>
         </div>
 
@@ -1086,6 +1131,34 @@
             <span class="text-xs font-bold text-blue-700 flex items-center gap-1">
               Descargar <i class="fa-solid fa-arrow-down"></i>
             </span>
+          </div>
+        </div>
+
+        <!-- Opción 4: Cédula Oficial de Resguardo (FOR-DAD_06) -->
+        <div class="p-3.5 border border-blue-200 bg-blue-50/50 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">
+                <i class="fa-solid fa-file-signature"></i>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-slate-800">Cédula Oficial de Resguardo (FOR-DAD_06)</h4>
+                <p class="text-[11px] text-slate-500">Formato Excel institucional oficial con firmas y asignación formal</p>
+              </div>
+            </div>
+          </div>
+          <div class="pt-2 border-t border-blue-100 flex flex-wrap items-center gap-2">
+            <div class="flex-1 min-w-[200px]">
+              <select id="export-resguardo-select" class="w-full text-xs py-1.5 px-2 bg-white border border-blue-200 rounded-lg text-slate-700 focus:ring-blue-500">
+                <option value="">-- Seleccionar Resguardante --</option>
+              </select>
+            </div>
+            <button type="button" onclick="downloadResguardoOficialFromSelect()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5 btn-pop">
+              <i class="fa-solid fa-download"></i> Descargar Resguardo
+            </button>
+            <button type="button" id="btn-export-resguardo-queue" onclick="downloadResguardoOficialFromQueue()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5 btn-pop">
+              <i class="fa-solid fa-list-check"></i> Con Cola (<span id="export-resguardo-queue-count">0</span>)
+            </button>
           </div>
         </div>
       </div>
@@ -1179,14 +1252,22 @@
         <i class="fa-solid fa-xmark"></i> Cerrar
       </button>
       <img id="lightbox-img" src="" alt="Fotografía del activo" class="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/20 bg-slate-900">
-      <div class="mt-3 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs flex items-center justify-between gap-4 max-w-full shadow-lg border border-slate-700">
+      <div class="mt-3 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs flex flex-wrap items-center justify-between gap-3 max-w-full shadow-lg border border-slate-700">
         <div>
           <span id="lightbox-caption" class="font-bold"></span>
           <span id="lightbox-badge" class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold"></span>
         </div>
-        <a id="lightbox-download" href="" download class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1">
-          <i class="fa-solid fa-download"></i> Descargar
-        </a>
+        <div class="flex items-center gap-2">
+          <button id="lightbox-btn-change" onclick="changePhotoFromLightbox()" class="hidden px-2.5 py-1 bg-purple-600/80 hover:bg-purple-600 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-camera"></i> Cambiar Foto
+          </button>
+          <button id="lightbox-btn-delete" onclick="deletePhotoFromLightbox()" class="hidden px-2.5 py-1 bg-red-600/80 hover:bg-red-600 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-trash"></i> Eliminar
+          </button>
+          <a id="lightbox-download" href="" download class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 px-2 py-1">
+            <i class="fa-solid fa-download"></i> Descargar
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -1216,15 +1297,16 @@
         <div 
           id="dropzone" 
           onclick="document.getElementById('input-image-file').click()"
-          class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center min-h-[160px]"
+          class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-5 text-center cursor-pointer transition bg-slate-50/50 hover:bg-emerald-50/30 flex flex-col items-center justify-center min-h-[140px]"
         >
-          <input type="file" id="input-image-file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewSelectedImage(this)">
+          <input type="file" id="input-image-file" accept="image/*" class="hidden" onchange="previewSelectedImage(this)">
+          <input type="file" id="input-image-camera" accept="image/*" capture="environment" class="hidden" onchange="previewSelectedImage(this)">
           <div id="dropzone-empty" class="space-y-2">
-            <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+            <div class="w-10 h-10 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-lg">
               <i class="fa-solid fa-cloud-arrow-up"></i>
             </div>
             <p class="font-semibold text-slate-700">Haz clic para seleccionar o arrastra una imagen</p>
-            <p class="text-[10px] text-slate-400">Formatos admitidos: JPG, PNG, WEBP (hasta 10 MB)</p>
+            <p class="text-[10px] text-slate-400">Formatos admitidos: JPG, PNG, WEBP</p>
           </div>
           <div id="dropzone-preview-container" class="hidden flex flex-col items-center space-y-2">
             <img id="dropzone-preview" src="" alt="Vista previa" class="max-h-40 rounded-xl object-contain shadow border border-slate-200">
@@ -1232,6 +1314,26 @@
               <i class="fa-solid fa-check"></i> Imagen lista para subir (clic para cambiar)
             </span>
           </div>
+        </div>
+
+        <!-- Botones rápidos: Tomar Foto (Cámara Móvil) o Elegir de Galería -->
+        <div class="flex items-center gap-2">
+          <button 
+            type="button" 
+            onclick="document.getElementById('input-image-camera').click()"
+            class="flex-1 py-1.5 px-3 bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 border border-slate-200 hover:border-purple-300 rounded-xl font-bold flex items-center justify-center gap-1.5 transition"
+          >
+            <i class="fa-solid fa-camera text-purple-600"></i>
+            <span>Tomar Foto</span>
+          </button>
+          <button 
+            type="button" 
+            onclick="document.getElementById('input-image-file').click()"
+            class="flex-1 py-1.5 px-3 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 rounded-xl font-bold flex items-center justify-center gap-1.5 transition"
+          >
+            <i class="fa-solid fa-images text-emerald-600"></i>
+            <span>Galería</span>
+          </button>
         </div>
 
         <!-- Opción de propagación por modelo -->
@@ -1471,6 +1573,165 @@
     </div>
   </div>
 
+  <!-- MODAL: PAPELERA DE RECICLAJE (SOFT DELETE) -->
+  <div id="modal-papelera" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      <!-- Encabezado -->
+      <div class="bg-red-50/80 px-6 py-4 border-b border-red-100 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center text-base font-bold shadow-xs">
+            <i class="fa-solid fa-trash-can"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Papelera de Reciclaje</h3>
+            <p class="text-xs text-slate-500">Activos eliminados que pueden ser restaurados o eliminados definitivamente</p>
+          </div>
+        </div>
+        <button onclick="closePapeleraModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Contenido Tabla -->
+      <div class="p-6 overflow-y-auto flex-1 space-y-4">
+        <div id="papelera-loading" class="hidden text-center py-8 text-slate-400">
+          <i class="fa-solid fa-circle-notch fa-spin text-2xl text-red-500"></i>
+          <p class="text-xs mt-2 font-medium">Cargando papelera...</p>
+        </div>
+
+        <div id="papelera-empty" class="hidden text-center py-12 space-y-2">
+          <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-trash-can-arrow-up"></i>
+          </div>
+          <p class="font-bold text-slate-700 text-sm">La papelera está vacía</p>
+          <p class="text-xs text-slate-400">No hay activos eliminados temporalmente.</p>
+        </div>
+
+        <div id="papelera-table-container" class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+              <tr>
+                <th class="px-3.5 py-2.5">Código / Serie</th>
+                <th class="px-3.5 py-2.5">Descripción</th>
+                <th class="px-3.5 py-2.5">Resguardante / Ubicación</th>
+                <th class="px-3.5 py-2.5">Eliminado Por</th>
+                <th class="px-3.5 py-2.5">Fecha</th>
+                <th class="px-3.5 py-2.5 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="papelera-table-body" class="divide-y divide-slate-100 font-normal">
+              <!-- Renderizado dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pie -->
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <span id="papelera-count-text">0 activos en papelera</span>
+        <button onclick="closePapeleraModal()" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BITÁCORA DE AUDITORÍA -->
+  <div id="modal-bitacora" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      <!-- Encabezado -->
+      <div class="bg-slate-50/90 px-6 py-4 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-base font-bold shadow-xs">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Bitácora de Auditoría del Sistema</h3>
+            <p class="text-xs text-slate-500">Historial de operaciones, modificaciones de estado, inicio de sesión y usuarios</p>
+          </div>
+        </div>
+        <button onclick="closeBitacoraModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Barra de Filtros de la Bitácora -->
+      <div class="px-6 py-2.5 bg-slate-50/50 border-b border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="bitacora-filter-op" onchange="loadBitacora(1)" class="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium focus:ring-emerald-500">
+            <option value="">Todas las Operaciones</option>
+            <option value="LOGIN">Inicios de Sesión</option>
+            <option value="CREACION">Creación de Activos</option>
+            <option value="EDICION">Edición de Activos</option>
+            <option value="CONDICION">Cambio de Condición</option>
+            <option value="FOTO">Gestión de Fotos</option>
+            <option value="ETIQUETA">Asignación de Etiquetas</option>
+            <option value="ELIMINACION">Eliminación (Papelera)</option>
+            <option value="RESTAURACION">Restauración</option>
+            <option value="PURGAR_PERMANENTE">Eliminación Permanente</option>
+            <option value="IMPORTACION">Importación Excel</option>
+          </select>
+
+          <input 
+            type="text" 
+            id="bitacora-search-input" 
+            placeholder="Buscar código o detalle..." 
+            onkeydown="if(event.key==='Enter') loadBitacora(1)"
+            class="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 placeholder-slate-400 focus:ring-emerald-500 w-48 sm:w-60"
+          >
+          <button onclick="loadBitacora(1)" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+
+        <button onclick="loadBitacora(1)" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+        </button>
+      </div>
+
+      <!-- Contenido Tabla -->
+      <div class="p-6 overflow-y-auto flex-1 space-y-4">
+        <div id="bitacora-loading" class="hidden text-center py-8 text-slate-400">
+          <i class="fa-solid fa-circle-notch fa-spin text-2xl text-emerald-600"></i>
+          <p class="text-xs mt-2 font-medium">Cargando registros...</p>
+        </div>
+
+        <div id="bitacora-empty" class="hidden text-center py-12 space-y-2">
+          <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-clipboard-list"></i>
+          </div>
+          <p class="font-bold text-slate-700 text-sm">Sin registros</p>
+          <p class="text-xs text-slate-400">No se encontraron eventos que coincidan con los filtros.</p>
+        </div>
+
+        <div id="bitacora-table-container" class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+              <tr>
+                <th class="px-3.5 py-2.5">Fecha y Hora</th>
+                <th class="px-3.5 py-2.5">Usuario / Rol</th>
+                <th class="px-3.5 py-2.5">Operación</th>
+                <th class="px-3.5 py-2.5">Activo</th>
+                <th class="px-3.5 py-2.5">Detalles</th>
+              </tr>
+            </thead>
+            <tbody id="bitacora-table-body" class="divide-y divide-slate-100 font-normal">
+              <!-- Renderizado dinámico -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Paginación de Bitácora -->
+      <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <span id="bitacora-total-info">Total: 0 registros</span>
+        <div class="flex items-center gap-1.5" id="bitacora-pagination">
+          <!-- Botones prev/next generados en JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MENÚ FLOTANTE DE ACCIONES RÁPIDAS DE FILA -->
   <div id="row-action-menu" class="fixed hidden z-50 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[200px] text-xs transition animate-in fade-in zoom-in-95"></div>
 
@@ -1481,6 +1742,6 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=11"></script>
+  <script src="/app.js?v=13"></script>
 </body>
 </html>

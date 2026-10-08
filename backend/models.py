@@ -88,6 +88,10 @@ class Activo(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    # Control de eliminación lógica (Papelera / Soft Delete)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+    deleted_by = Column(String(100), nullable=True)
+
     # Relaciones ORM
     categoria = relationship("Categoria", back_populates="activos")
     ubicacion = relationship("Ubicacion", back_populates="activos")
@@ -139,4 +143,22 @@ class Usuario(Base):
 
     def __repr__(self):
         return f"<Usuario {self.username} ({self.rol})>"
+
+
+class BitacoraLog(Base):
+    __tablename__ = "bitacora_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fecha_hora = Column(DateTime, server_default=func.now(), index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    usuario_nombre = Column(String(100), nullable=False)
+    usuario_rol = Column(String(50), nullable=False)
+    operacion = Column(String(50), nullable=False, index=True)  # 'CREACION', 'EDICION', 'CONDICION', 'FOTO', 'ELIMINACION', 'RESTAURACION', 'IMPORTACION'
+    activo_id = Column(Integer, nullable=True, index=True)
+    codigo_activo = Column(String(50), nullable=True, index=True)
+    detalles = Column(Text, nullable=True)
+    ip_address = Column(String(50), nullable=True)
+
+    def __repr__(self):
+        return f"<BitacoraLog {self.fecha_hora} [{self.operacion}] por {self.usuario_nombre}>"
 

@@ -13,8 +13,9 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from backend.models import Activo, Categoria, Ubicacion, Resguardante
+from backend.models import Activo, Categoria, Ubicacion, Resguardante, Usuario
 from backend import crud
+from backend.audit import registrar_bitacora
 
 
 def clean_str(val: Any) -> Optional[str]:
@@ -124,7 +125,8 @@ def import_excel_activos(
     db: Session,
     file_bytes: bytes,
     origen: str,
-    filename: str
+    filename: str,
+    current_user: Optional[Usuario] = None
 ) -> Dict[str, Any]:
     """
     Procesa un archivo Excel cargado en memoria y añade los activos al inventario.
@@ -279,6 +281,15 @@ def import_excel_activos(
 
     db.commit()
 
+    registrar_bitacora(
+        db=db,
+        usuario=current_user,
+        operacion="IMPORTACION",
+        detalles=f"Importación de Excel ({filename}, Origen: {origen_norm}): {creados} creados, {omitidos} omitidos por ya existir.",
+        activo_id=None,
+        codigo_activo=None
+    )
+
     return {
         "success": True,
         "origen": origen_norm,
@@ -286,5 +297,5 @@ def import_excel_activos(
         "creados": creados,
         "omitidos": omitidos,
         "errores": errores[:10],
-        "mensaje": f"Se procesaron {total_leidos} filas: {creados} activos creados, {omitidos} omitidos por duplicidad."
+        "mensaje": f"Se procesaron {total_leidos} filas: {creados} activos creados, {omitidos} omitidos por ya existir."
     }

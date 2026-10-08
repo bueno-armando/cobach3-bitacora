@@ -1,0 +1,14 @@
+IDEAS A DISCUTIR:
+- Si no sería conveniente manejar otra categoría de condición para los artículos que originalmente no la tenían. Algo como "Predeterminada". O si basta confiar en que la gran mayoría de los artículos estarán en la condición default que se maneja ahora, que es la conclusión a la que llegamos, pero igual me gustaría saber tu opinión y el cómo se maneja esto en otros sistemas.
+- Si tendría sentido implementar en la importación de archivos excel una opción para importar "todos los tipos a la vez". Es algo que se le ocurrió momentáneamente al encargado de informática, pero luego de discutirlo nos dimos cuenta de que no tenía sentido porque en ningún momento existe fuera de nuestra plataforma este amalgamado de todas las diferentes fuentes de activos (DG, Gasto, Control Admin). Pero igual con el punto anterior, me gustaría de todos modos escuchar tu opinión.
+
+REVISIÓN DE CARACTERÍSTICAS EXISTENTES:
+- ¿La opción para propagar la foto de un activo a todas las instancias del mismo, cómo funciona y donde está/cómo la pruebo?
+- Tener la opción para reemplazar la foto de un activo en la misma vista que se abre al hacerle clic (aparte de está actualmente, en el modal de edición de activo): mi impresión es que sería natural tenerlo de esta manera - con el diseño actual si ves una foto y en ese momento decides que quieres reemplazarla/borrarla, tienes que salir de esa vista e irte a la edición del activo, generando cierta fricción en la experiencia de usuario. Pero si crees que esto rompe con alguna convención de diseño, hazmelo saber.
+- ¿Actualmente se está soportando el uso de galería/cámara en dispositivos móbiles para importar fotos de activos?
+- Cómo se está evitando que se duplicen registros al importar archivos excel?
+- El archivo excel (formato) que había quedado pendiente de que me mandara Mike ya está, nombre de archivo: 'RESGUARDO DE BIENES MUEBLES (FORMATO).xlsx'
+
+NUEVAS CARACTERÍSITCAS:
+- Implementación de una bitácora. ¿Dónde y cómo se implementaría? La idea del encargado de informática era hacer un registro de los campos fecha, hora, usuario, operación.
+- Vista de activos eliminados: quisiera que me aclares cómo se está manejando actualmente a cada nivel (frontend, backend/DB) la eliminación de activos y que discutamos dónde y cómo se podría implementar una vista de estos activos para el usuario admin. Mi idea era ponerlo arriba del botón "Agregar Artículo" pero no sé que pienses tú de toda la idea según estándares profesionales de diseño.

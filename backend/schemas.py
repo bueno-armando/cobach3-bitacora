@@ -233,3 +233,48 @@ class ImportExcelResponse(BaseModel):
     errores: List[str] = []
     mensaje: str
 
+
+class BitacoraLogOut(BaseModel):
+    id: int
+    fecha_hora: datetime
+    usuario_nombre: str
+    usuario_rol: str
+    operacion: str
+    activo_id: Optional[int] = None
+    codigo_activo: Optional[str] = None
+    detalles: Optional[str] = None
+    ip_address: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BitacoraResponse(BaseModel):
+    total: int
+    items: List[BitacoraLogOut]
+
+
+class ActivoPapeleraItem(BaseModel):
+    id: int
+    codigo_interno: str
+    codigo_oficial: Optional[str] = None
+    descripcion: str
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    numero_serie: Optional[str] = None
+    resguardante: Optional[str] = None
+    ubicacion: Optional[str] = None
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PapeleraResponse(BaseModel):
+    total: int
+    items: List[ActivoPapeleraItem]
+
+
+class GenerarResguardoRequest(BaseModel):
+    resguardante_id: Optional[int] = None
+    activo_ids: Optional[List[int]] = None
+

@@ -1,6 +1,7 @@
 import io
 import math
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 from fastapi import HTTPException
@@ -8,7 +9,15 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from backend.models import Activo, Categoria, Ubicacion, Resguardante, HistorialEtiqueta
+from backend.models import (
+    Activo,
+    Categoria,
+    Ubicacion,
+    Resguardante,
+    HistorialEtiqueta,
+    Usuario,
+    BitacoraLog
+)
 from backend.schemas import (
     AsignarEtiquetaRequest,
     ActivoListItem,
@@ -16,8 +25,10 @@ from backend.schemas import (
     ActivoCreate,
     ActivoUpdate,
     CambiarEstatusRequest,
-    ActualizarCondicionRequest
+    ActualizarCondicionRequest,
+    ActivoPapeleraItem
 )
+from backend.audit import registrar_bitacora
 
 
 def get_activos(
@@ -38,7 +49,7 @@ def get_activos(
         joinedload(Activo.categoria),
         joinedload(Activo.ubicacion),
         joinedload(Activo.resguardante)
-    )
+    ).filter(Activo.deleted_at == None)
 
     if discrepancias:
         query = query.filter(
@@ -239,7 +250,7 @@ def get_activos_by_ids(db: Session, ids: List[int]) -> List[ActivoListItem]:
         joinedload(Activo.categoria),
         joinedload(Activo.ubicacion),
         joinedload(Activo.resguardante)
-    ).filter(Activo.id.in_(ids)).order_by(Activo.id.asc()).all()
+    ).filter(Activo.id.in_(ids), Activo.deleted_at == None).order_by(Activo.id.asc()).all()
 
     items = []
     for a in activos:
@@ -317,7 +328,11 @@ def get_or_create_lookup(db: Session, model, id_val: Optional[int], name_val: Op
     return None
 
 
-def create_activo(db: Session, data: ActivoCreate) -> ActivoDetail:
+def create_activo(
+    db: Session,
+    data: ActivoCreate,
+    current_user: Optional[Usuario] = None
+) -> ActivoDetail:
     """Crea un nuevo activo en la base de datos con validaciones completas."""
     # 1. Resolver código interno
     cod_interno = (data.codigo_interno or "").strip()
@@ -385,12 +400,26 @@ def create_activo(db: Session, data: ActivoCreate) -> ActivoDetail:
     db.commit()
     db.refresh(nuevo)
 
+    registrar_bitacora(
+        db=db,
+        usuario=current_user,
+        operacion="CREACION",
+        detalles=f"Activo creado manualmente: {nuevo.descripcion} (Código: {nuevo.codigo_interno}, Serie: {nuevo.numero_serie or 'S/N'})",
+        activo_id=nuevo.id,
+        codigo_activo=nuevo.codigo_interno
+    )
+
     return get_activo_by_id(db, nuevo.id)
 
 
-def update_activo(db: Session, activo_id: int, data: ActivoUpdate) -> ActivoDetail:
-    """Actualiza los campos de un activo existente."""
-    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+def update_activo(
+    db: Session,
+    activo_id: int,
+    data: ActivoUpdate,
+    current_user: Optional[Usuario] = None
+) -> ActivoDetail:
+    """Actualiza los campos de un activo existente y registra la auditoría."""
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at == None).first()
     if not activo:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
@@ -463,21 +492,145 @@ def update_activo(db: Session, activo_id: int, data: ActivoUpdate) -> ActivoDeta
     db.commit()
     db.refresh(activo)
 
+    registrar_bitacora(
+        db=db,
+        usuario=current_user,
+        operacion="EDICION",
+        detalles=f"Activo modificado: {activo.descripcion} (Código: {activo.codigo_interno})",
+        activo_id=activo.id,
+        codigo_activo=activo.codigo_interno
+    )
+
     return get_activo_by_id(db, activo.id)
 
 
-def delete_activo(db: Session, activo_id: int) -> Dict[str, Any]:
-    """Elimina un activo por ID."""
-    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+def delete_activo(db: Session, activo_id: int, current_user: Optional[Usuario] = None) -> Dict[str, Any]:
+    """Mueve un activo a la papelera de reciclaje (Soft Delete)."""
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at == None).first()
     if not activo:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
     desc = activo.descripcion
     cod = activo.codigo_interno
+    activo.deleted_at = datetime.now(timezone.utc)
+    activo.deleted_by = current_user.username if current_user else "admin"
+    db.commit()
+
+    registrar_bitacora(
+        db=db,
+        usuario=current_user,
+        operacion="ELIMINACION",
+        detalles=f"Activo movido a la papelera: {desc} (Serie: {activo.numero_serie or 'S/N'})",
+        activo_id=activo_id,
+        codigo_activo=cod
+    )
+
+    return {"success": True, "message": f"Activo {cod} ({desc}) movido a la papelera"}
+
+
+def restore_activo(db: Session, activo_id: int, current_user: Optional[Usuario] = None) -> Dict[str, Any]:
+    """Restaura un activo de la papelera de reciclaje al inventario activo."""
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at != None).first()
+    if not activo:
+        raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado en la papelera")
+
+    cod = activo.codigo_interno
+    desc = activo.descripcion
+    activo.deleted_at = None
+    activo.deleted_by = None
+    db.commit()
+
+    registrar_bitacora(
+        db=db,
+        usuario=current_user,
+        operacion="RESTAURACION",
+        detalles=f"Activo restaurado de la papelera: {desc}",
+        activo_id=activo_id,
+        codigo_activo=cod
+    )
+
+    return {"success": True, "message": f"Activo {cod} restaurado con éxito"}
+
+
+def purge_activo(db: Session, activo_id: int, current_user: Optional[Usuario] = None) -> Dict[str, Any]:
+    """Elimina definitivamente un activo de la base de datos (purgar)."""
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at != None).first()
+    if not activo:
+        raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado en la papelera")
+
+    cod = activo.codigo_interno
+    desc = activo.descripcion
     db.delete(activo)
     db.commit()
 
-    return {"success": True, "message": f"Activo {cod} ({desc}) eliminado con éxito"}
+    registrar_bitacora(
+        db=db,
+        usuario=current_user,
+        operacion="PURGAR_PERMANENTE",
+        detalles=f"Activo eliminado definitivamente de la base de datos: {desc}",
+        activo_id=activo_id,
+        codigo_activo=cod
+    )
+
+    return {"success": True, "message": f"Activo {cod} eliminado definitivamente"}
+
+
+def get_papelera(db: Session) -> Dict[str, Any]:
+    """Lista todos los activos que se encuentran en la papelera de reciclaje."""
+    activos = db.query(Activo).options(
+        joinedload(Activo.ubicacion),
+        joinedload(Activo.resguardante)
+    ).filter(Activo.deleted_at != None).order_by(Activo.deleted_at.desc()).all()
+
+    items = [
+        ActivoPapeleraItem(
+            id=a.id,
+            codigo_interno=a.codigo_interno,
+            codigo_oficial=a.codigo_oficial,
+            descripcion=a.descripcion,
+            marca=a.marca,
+            modelo=a.modelo,
+            numero_serie=a.numero_serie,
+            resguardante=a.resguardante.nombre if a.resguardante else None,
+            ubicacion=a.ubicacion.nombre if a.ubicacion else None,
+            deleted_at=a.deleted_at,
+            deleted_by=a.deleted_by
+        )
+        for a in activos
+    ]
+    return {"total": len(items), "items": items}
+
+
+def get_bitacora(
+    db: Session,
+    operacion: Optional[str] = None,
+    usuario: Optional[str] = None,
+    q: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50
+) -> Dict[str, Any]:
+    """Obtiene el historial de eventos de la bitácora con filtros y paginación."""
+    query = db.query(BitacoraLog)
+    if operacion and operacion.strip():
+        query = query.filter(BitacoraLog.operacion == operacion.strip().upper())
+    if usuario and usuario.strip():
+        query = query.filter(BitacoraLog.usuario_nombre.ilike(f"%{usuario.strip()}%"))
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                BitacoraLog.detalles.ilike(term),
+                BitacoraLog.codigo_activo.ilike(term)
+            )
+        )
+    total = query.count()
+    offset = (page - 1) * limit
+    logs = query.order_by(BitacoraLog.fecha_hora.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "total": total,
+        "items": logs
+    }
 
 
 def cambiar_estatus_operativo(db: Session, activo_id: int, data: CambiarEstatusRequest) -> ActivoDetail:
@@ -506,10 +659,10 @@ def update_condicion_resguardo(
     db: Session,
     activo_id: int,
     data: ActualizarCondicionRequest,
-    usuario_nombre: str = "Resguardo"
+    usuario: Optional[Usuario] = None
 ) -> ActivoDetail:
     """Permite al resguardante o admin reportar condición física y/o cambio de estatus a desuso."""
-    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at == None).first()
     if not activo:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
@@ -524,6 +677,7 @@ def update_condicion_resguardo(
         if est_limpio in ("OPERATIVO", "EN_DESUSO", "EN_REPARACION", "BAJA"):
             activo.estatus_activo = est_limpio
 
+    usuario_nombre = usuario.username if usuario else "Personal"
     if data.observaciones and data.observaciones.strip():
         nota = f"[{usuario_nombre} - Condición: {cond_limpia}]: {data.observaciones.strip()}"
         activo.observaciones = f"{activo.observaciones}\n{nota}" if activo.observaciones else nota
@@ -531,11 +685,25 @@ def update_condicion_resguardo(
     db.commit()
     db.refresh(activo)
 
+    registrar_bitacora(
+        db=db,
+        usuario=usuario,
+        operacion="CONDICION",
+        detalles=f"Condición cambiada a '{cond_limpia}' (Estatus: {activo.estatus_activo}). {data.observaciones or ''}".strip(),
+        activo_id=activo.id,
+        codigo_activo=activo.codigo_interno
+    )
+
     return get_activo_by_id(db, activo.id)
 
 
-def asignar_etiqueta_oficial(db: Session, activo_id: int, data: AsignarEtiquetaRequest) -> ActivoDetail:
-    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+def asignar_etiqueta_oficial(
+    db: Session,
+    activo_id: int,
+    data: AsignarEtiquetaRequest,
+    usuario: Optional[Usuario] = None
+) -> ActivoDetail:
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at == None).first()
     if not activo:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
@@ -559,12 +727,21 @@ def asignar_etiqueta_oficial(db: Session, activo_id: int, data: AsignarEtiquetaR
     historial = HistorialEtiqueta(
         activo_id=activo.id,
         codigo_oficial_asignado=codigo_limpio,
-        asignado_por=data.asignado_por or "Personal Plantel 3",
+        asignado_por=data.asignado_por or (usuario.username if usuario else "Personal Plantel 3"),
         notas=data.notas
     )
     db.add(historial)
     db.commit()
     db.refresh(activo)
+
+    registrar_bitacora(
+        db=db,
+        usuario=usuario,
+        operacion="ETIQUETA",
+        detalles=f"Asignada etiqueta oficial verde #{codigo_limpio} al activo {activo.codigo_interno}",
+        activo_id=activo.id,
+        codigo_activo=activo.codigo_interno
+    )
 
     return get_activo_by_id(db, activo.id)
 
@@ -574,9 +751,10 @@ def set_activo_imagen(
     activo_id: int,
     imagen_url: str,
     propagate_model: bool = False,
-    override_custom: bool = False
+    override_custom: bool = False,
+    usuario: Optional[Usuario] = None
 ) -> Dict[str, Any]:
-    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at == None).first()
     if not activo:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
@@ -589,7 +767,8 @@ def set_activo_imagen(
         modelo_clean = activo.modelo.strip()
         query_model = db.query(Activo).filter(
             Activo.modelo == modelo_clean,
-            Activo.id != activo.id
+            Activo.id != activo.id,
+            Activo.deleted_at == None
         )
         if not override_custom:
             # BLINDAJE DE FOTOS PARTICULARES: No sobreescribir las que ya tienen foto personalizada
@@ -604,6 +783,15 @@ def set_activo_imagen(
     db.commit()
     db.refresh(activo)
 
+    registrar_bitacora(
+        db=db,
+        usuario=usuario,
+        operacion="FOTO",
+        detalles=f"Fotografía actualizada en {activo.codigo_interno}{f' (propagada a {propagated_count} activos del modelo)' if propagated_count > 0 else ''}",
+        activo_id=activo.id,
+        codigo_activo=activo.codigo_interno
+    )
+
     return {
         "success": True,
         "activo_id": activo.id,
@@ -614,14 +802,27 @@ def set_activo_imagen(
     }
 
 
-def delete_activo_imagen(db: Session, activo_id: int) -> Dict[str, Any]:
-    activo = db.query(Activo).filter(Activo.id == activo_id).first()
+def delete_activo_imagen(
+    db: Session,
+    activo_id: int,
+    usuario: Optional[Usuario] = None
+) -> Dict[str, Any]:
+    activo = db.query(Activo).filter(Activo.id == activo_id, Activo.deleted_at == None).first()
     if not activo:
         raise HTTPException(status_code=404, detail=f"Activo con ID {activo_id} no encontrado")
 
     activo.imagen_url = None
     activo.es_foto_personalizada = False
     db.commit()
+
+    registrar_bitacora(
+        db=db,
+        usuario=usuario,
+        operacion="FOTO",
+        detalles=f"Fotografía eliminada del activo {activo.codigo_interno}",
+        activo_id=activo.id,
+        codigo_activo=activo.codigo_interno
+    )
 
     return {"success": True, "message": "Foto eliminada del activo"}
 
@@ -638,24 +839,26 @@ def get_catalogos(db: Session) -> Dict[str, Any]:
 
 
 def get_dashboard_stats(db: Session) -> Dict[str, Any]:
-    total_activos = db.query(func.count(Activo.id)).scalar() or 0
-    total_etiquetados = db.query(func.count(Activo.id)).filter(Activo.estatus_etiqueta == "ETIQUETADO_OFICIAL").scalar() or 0
-    total_pendientes = db.query(func.count(Activo.id)).filter(Activo.estatus_etiqueta == "PENDIENTE_ETIQUETA").scalar() or 0
+    total_activos = db.query(func.count(Activo.id)).filter(Activo.deleted_at == None).scalar() or 0
+    total_etiquetados = db.query(func.count(Activo.id)).filter(Activo.estatus_etiqueta == "ETIQUETADO_OFICIAL", Activo.deleted_at == None).scalar() or 0
+    total_pendientes = db.query(func.count(Activo.id)).filter(Activo.estatus_etiqueta == "PENDIENTE_ETIQUETA", Activo.deleted_at == None).scalar() or 0
+    total_papelera = db.query(func.count(Activo.id)).filter(Activo.deleted_at != None).scalar() or 0
 
     # Desglose por origen
-    origenes = db.query(Activo.origen, func.count(Activo.id)).group_by(Activo.origen).all()
+    origenes = db.query(Activo.origen, func.count(Activo.id)).filter(Activo.deleted_at == None).group_by(Activo.origen).all()
     por_origen = {orig: count for orig, count in origenes}
 
     # Desglose por estado operativo
-    total_operativos = db.query(func.count(Activo.id)).filter(Activo.estatus_activo.in_(["OPERATIVO", "ACTIVO"])).scalar() or 0
-    total_desuso = db.query(func.count(Activo.id)).filter(Activo.estatus_activo == "EN_DESUSO").scalar() or 0
-    total_reparacion = db.query(func.count(Activo.id)).filter(Activo.estatus_activo == "EN_REPARACION").scalar() or 0
-    total_baja = db.query(func.count(Activo.id)).filter(Activo.estatus_activo == "BAJA").scalar() or 0
+    total_operativos = db.query(func.count(Activo.id)).filter(Activo.estatus_activo.in_(["OPERATIVO", "ACTIVO"]), Activo.deleted_at == None).scalar() or 0
+    total_desuso = db.query(func.count(Activo.id)).filter(Activo.estatus_activo == "EN_DESUSO", Activo.deleted_at == None).scalar() or 0
+    total_reparacion = db.query(func.count(Activo.id)).filter(Activo.estatus_activo == "EN_REPARACION", Activo.deleted_at == None).scalar() or 0
+    total_baja = db.query(func.count(Activo.id)).filter(Activo.estatus_activo == "BAJA", Activo.deleted_at == None).scalar() or 0
 
     return {
         "total_activos": total_activos,
         "total_etiquetados": total_etiquetados,
         "total_pendientes": total_pendientes,
+        "total_papelera": total_papelera,
         "por_origen": por_origen,
         "estatus_operativo": {
             "operativos": total_operativos,
@@ -684,7 +887,7 @@ def export_activos_to_excel(
         joinedload(Activo.categoria),
         joinedload(Activo.ubicacion),
         joinedload(Activo.resguardante)
-    )
+    ).filter(Activo.deleted_at == None)
 
     if ids:
         query = query.filter(Activo.id.in_(ids))
@@ -790,6 +993,7 @@ def export_activos_to_excel(
         "origen": ("Fuente (Origen)", lambda a: a.origen or "", True),
         "condicion_dg": ("Condición D.G.", lambda a: a.condicion_dg or "", True),
         "condicion_actual": ("Condición Actual (Plantel 3)", lambda a: a.condicion_actual or a.condicion or "Buena", True),
+        "tiene_discrepancia": ("Discrepancia D.G.", lambda a: "SÍ" if a.tiene_discrepancia_dg else "NO", True),
         "costo": ("Costo ($ MXN)", lambda a: f"${a.costo:,.2f}" if a.costo is not None else "", True),
         "created_at": ("Fecha Registro", lambda a: a.created_at.strftime("%Y-%m-%d") if a.created_at else "", True),
         "observaciones": ("Comentarios", lambda a: a.observaciones or "", False),
@@ -799,7 +1003,7 @@ def export_activos_to_excel(
         "id", "codigo_interno", "codigo_oficial", "estatus_etiqueta", "estatus_activo",
         "descripcion", "especificacion", "marca", "modelo", "numero_serie",
         "ubicacion", "categoria", "resguardante", "origen", "condicion_dg",
-        "condicion_actual", "costo", "created_at", "observaciones"
+        "condicion_actual", "tiene_discrepancia", "costo", "created_at", "observaciones"
     ]
 
     selected_keys = []

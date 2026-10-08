@@ -45,3 +45,10 @@ def ensure_schema_migrations(eng=engine):
                 conn.execute(text("ALTER TABLE activos ADD COLUMN deleted_by VARCHAR(100)"))
                 conn.commit()
 
+    if "resguardantes" in table_names:
+        cols = [c["name"] for c in inspector.get_columns("resguardantes")]
+        with eng.connect() as conn:
+            if "puesto" not in cols:
+                conn.execute(text("ALTER TABLE resguardantes ADD COLUMN puesto VARCHAR(120)"))
+                conn.commit()
+

@@ -439,7 +439,7 @@ function renderTable(items) {
             class="w-8 h-8 rounded-lg object-cover cursor-pointer hover:opacity-90 hover:ring-2 hover:ring-emerald-500 transition border border-slate-200 shadow-xs bg-slate-100"
             title="Clic para ver en tamaño completo"
           >
-          ${item.es_foto_personalizada ? '<span class="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 border border-white rounded-full" title="Foto particular de este activo"></span>' : ''}
+          ${item.es_foto_personalizada ? '<span class="absolute -top-1 -right-1 w-2 h-2 bg-amber-500 border border-white rounded-full" title="Foto particular"></span>' : ''}
         </div>
       `;
     } else {
@@ -1323,7 +1323,7 @@ async function openDetailModal(id) {
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-xs font-bold text-slate-800">Fotografía Asignada</span>
               ${a.es_foto_personalizada ? 
-                '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-300"><i class="fa-solid fa-camera mr-1"></i>Foto particular / detalle físico</span>' : 
+                '<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-300"><i class="fa-solid fa-camera mr-1"></i>Foto particular</span>' : 
                 '<span class="bg-slate-200 text-slate-700 text-[10px] font-medium px-2 py-0.5 rounded"><i class="fa-solid fa-layer-group mr-1"></i>Foto de modelo / catálogo</span>'
               }
             </div>
@@ -2114,20 +2114,6 @@ function openExportModal() {
   const optQueue = document.getElementById('export-opt-queue');
   const queueCountEl = document.getElementById('export-queue-count');
 
-  // Llenar select de resguardantes para cédula oficial si está disponible
-  const resgSelect = document.getElementById('export-resguardo-select');
-  if (resgSelect && state.rawCatalogos?.resguardantes) {
-    const prevVal = resgSelect.value;
-    resgSelect.innerHTML = '<option value="">-- Seleccionar Resguardante --</option>';
-    state.rawCatalogos.resguardantes.forEach(r => {
-      const opt = document.createElement('option');
-      opt.value = r.id;
-      opt.textContent = r.nombre;
-      resgSelect.appendChild(opt);
-    });
-    if (prevVal) resgSelect.value = prevVal;
-  }
-
   // Detectar si hay filtros activos
   const hasFilter = Boolean(
     state.tab || 
@@ -2158,18 +2144,13 @@ function openExportModal() {
   if (queueSize > 0) {
     optQueue.classList.remove('hidden');
     queueCountEl.textContent = queueSize;
-    const btnResgQueue = document.getElementById('btn-export-resguardo-queue');
-    const queueResgCount = document.getElementById('export-resguardo-queue-count');
-    if (btnResgQueue) btnResgQueue.classList.remove('hidden');
-    if (queueResgCount) queueResgCount.textContent = queueSize;
   } else {
     optQueue.classList.add('hidden');
-    const btnResgQueue = document.getElementById('btn-export-resguardo-queue');
-    if (btnResgQueue) btnResgQueue.classList.add('hidden');
   }
 
   modal.classList.remove('hidden');
 }
+
 
 function closeExportModal() {
   const modal = document.getElementById('modal-export');
@@ -2310,27 +2291,107 @@ async function downloadResguardoOficial({ resguardante_id = null, activo_ids = n
   }
 }
 
-function downloadResguardoOficialFromSelect() {
-  const sel = document.getElementById('export-resguardo-select');
+function openResguardoOficialModal() {
+  const modal = document.getElementById('modal-resguardo-oficial');
+  if (!modal) return;
+
+  const sel = document.getElementById('modal-resguardo-select');
+  const preview = document.getElementById('modal-resguardo-puesto-preview');
+  if (preview) {
+    preview.textContent = '';
+    preview.classList.add('hidden');
+  }
+
+  if (sel && state.rawCatalogos?.resguardantes) {
+    const prevVal = sel.value;
+    sel.innerHTML = '<option value="">-- Seleccionar Resguardante --</option>';
+    state.rawCatalogos.resguardantes.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      opt.textContent = r.puesto ? `${r.nombre} (${r.puesto})` : r.nombre;
+      sel.appendChild(opt);
+    });
+    if (prevVal) {
+      sel.value = prevVal;
+      onResguardanteSelectedChange();
+    }
+  }
+
+  // Actualizar indicador y estado del botón de cola
+  const queueSize = state.printQueue ? state.printQueue.size : 0;
+  const queueBadge = document.getElementById('modal-resguardo-queue-badge');
+  const queueBtn = document.getElementById('btn-modal-resguardo-queue');
+  if (queueBadge) queueBadge.textContent = `${queueSize} activo${queueSize === 1 ? '' : 's'}`;
+  if (queueBtn) {
+    queueBtn.disabled = queueSize === 0;
+    if (queueSize === 0) {
+      queueBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+      queueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeResguardoOficialModal() {
+  const modal = document.getElementById('modal-resguardo-oficial');
+  if (modal) modal.classList.add('hidden');
+}
+
+function onResguardanteSelectedChange() {
+  const sel = document.getElementById('modal-resguardo-select');
+  const preview = document.getElementById('modal-resguardo-puesto-preview');
+  if (!sel || !preview) return;
+
+  const resgId = sel.value ? parseInt(sel.value, 10) : null;
+  if (!resgId) {
+    preview.textContent = '';
+    preview.classList.add('hidden');
+    return;
+  }
+
+  const resg = (state.rawCatalogos?.resguardantes || []).find(r => r.id === resgId);
+  if (resg && resg.puesto) {
+    preview.innerHTML = `<i class="fa-solid fa-briefcase mr-1 text-blue-600"></i> Puesto registrado en D.G.: <strong>${escapeHtml(resg.puesto)}</strong>`;
+    preview.classList.remove('hidden');
+  } else {
+    preview.innerHTML = `<i class="fa-solid fa-circle-question mr-1 text-amber-500"></i> Sin puesto registrado aún en catálogo oficial`;
+    preview.classList.remove('hidden');
+  }
+}
+
+function downloadResguardoOficialFromModalSelect() {
+  const sel = document.getElementById('modal-resguardo-select');
   const resgId = sel?.value ? parseInt(sel.value, 10) : null;
   if (!resgId) {
     showToast('Por favor selecciona un resguardante del listado', true);
     return;
   }
-  closeExportModal();
+  closeResguardoOficialModal();
   downloadResguardoOficial({ resguardante_id: resgId });
 }
 
-function downloadResguardoOficialFromQueue() {
+function downloadResguardoOficialFromModalQueue() {
   const queueSize = state.printQueue ? state.printQueue.size : 0;
   if (queueSize === 0) {
     showToast('La cola de activos está vacía', true);
     return;
   }
-  closeExportModal();
+  closeResguardoOficialModal();
   const ids = Array.from(state.printQueue.keys());
   downloadResguardoOficial({ activo_ids: ids });
 }
+
+// Aliases para compatibilidad con botones directos
+function downloadResguardoOficialFromSelect() {
+  downloadResguardoOficialFromModalSelect();
+}
+
+function downloadResguardoOficialFromQueue() {
+  downloadResguardoOficialFromModalQueue();
+}
+
 
 // -------------------------------------------------------------
 // VISOR DE IMÁGENES EN ALTA RESOLUCIÓN (LIGHTBOX)
@@ -2349,7 +2410,7 @@ function openLightbox(url, caption, code, isCustom, activoId = null, modelo = ''
   captionEl.textContent = caption || 'Fotografía de Activo';
   
   if (isCustom) {
-    badgeEl.textContent = 'Foto particular / daño físico';
+    badgeEl.textContent = 'Foto particular';
     badgeEl.className = 'ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40';
   } else {
     badgeEl.textContent = 'Foto de catálogo / modelo';
@@ -2845,11 +2906,11 @@ async function loadPapelera() {
                   <i class="fa-solid fa-rotate-left"></i> Restaurar
                 </button>
                 <button 
-                  onclick="purgeActivo(${item.id}, '${escapeHtml(item.descripcion)}')" 
+                  onclick="openConfirmDeletePermanentModal(${item.id}, '${escapeHtml(item.descripcion)}', '${item.codigo_etiqueta_dg || item.codigo_interno || ''}')" 
                   class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-[11px] transition shadow-xs flex items-center gap-1 btn-pop"
-                  title="Eliminar permanentemente de la base de datos"
+                  title="Eliminar definitivamente de la base de datos"
                 >
-                  <i class="fa-solid fa-trash-can"></i> Purgar
+                  <i class="fa-solid fa-trash-can"></i> Eliminar definitivamente
                 </button>
               </div>
             </td>
@@ -2879,25 +2940,61 @@ async function restoreActivo(id) {
   }
 }
 
-async function purgeActivo(id, desc) {
-  const confirmMsg = desc 
-    ? `¿Estás COMPLETAMENTE SEGURO de eliminar DEFINITIVAMENTE "${desc}"?\n\nEsta acción borrará el registro de la base de datos de manera irreversible.`
-    : `¿Estás COMPLETAMENTE SEGURO de eliminar DEFINITIVAMENTE este activo?\n\nEsta acción es irreversible.`;
+state.pendingPermanentDeleteId = null;
 
-  if (!confirm(confirmMsg)) return;
+function openConfirmDeletePermanentModal(id, desc, code = '') {
+  state.pendingPermanentDeleteId = id;
+  const modal = document.getElementById('modal-confirm-delete-permanent');
+  const targetEl = document.getElementById('confirm-delete-permanent-target');
+  if (targetEl) {
+    targetEl.innerHTML = `
+      <div class="font-bold text-slate-800">${escapeHtml(desc || 'Activo sin descripción')}</div>
+      ${code ? `<div class="text-[11px] text-slate-500 font-mono mt-0.5"><i class="fa-solid fa-tag text-slate-400 mr-1"></i>Código: ${escapeHtml(code)}</div>` : ''}
+    `;
+  }
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeConfirmDeletePermanentModal() {
+  state.pendingPermanentDeleteId = null;
+  const modal = document.getElementById('modal-confirm-delete-permanent');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function executeDeletePermanent() {
+  const id = state.pendingPermanentDeleteId;
+  if (!id) return;
+
+  const btn = document.getElementById('btn-execute-delete-permanent');
+  const originalHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Eliminando...';
+  }
 
   try {
     const res = await authFetch(`/api/activos/${id}/permanente`, { method: 'DELETE' });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || 'Error al purgar el activo');
+      throw new Error(data.detail || 'Error al eliminar definitivamente el activo');
     }
-    showToast('Activo purgado permanentemente');
+    closeConfirmDeletePermanentModal();
+    showToast('Activo eliminado definitivamente');
     await Promise.all([loadPapelera(), loadStats()]);
   } catch (err) {
     showToast(err.message, true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml || '<i class="fa-solid fa-trash-can"></i> Eliminar definitivamente';
+    }
   }
 }
+
+function purgeActivo(id, desc) {
+  openConfirmDeletePermanentModal(id, desc);
+}
+
 
 // =============================================================
 // MÓDULO: BITÁCORA DE AUDITORÍA

@@ -277,6 +277,16 @@
           </button>
 
           <button 
+            onclick="openResguardoOficialModal()" 
+            id="btn-open-resguardo"
+            class="btn-pop px-3 py-1 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5"
+            title="Generar Cédula Oficial de Resguardo (FOR-DAD_06)"
+          >
+            <i class="fa-solid fa-file-signature text-emerald-400"></i>
+            <span class="hidden md:inline">Cédula Oficial</span>
+          </button>
+
+          <button 
             onclick="openImportModal()" 
             id="btn-open-import"
             class="btn-pop px-3 py-1 bg-emerald-950/90 hover:bg-emerald-900 border border-emerald-600/80 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 hidden"
@@ -1134,34 +1144,8 @@
           </div>
         </div>
 
-        <!-- Opción 4: Cédula Oficial de Resguardo (FOR-DAD_06) -->
-        <div class="p-3.5 border border-blue-200 bg-blue-50/50 rounded-xl space-y-2.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold">
-                <i class="fa-solid fa-file-signature"></i>
-              </div>
-              <div>
-                <h4 class="text-xs font-bold text-slate-800">Cédula Oficial de Resguardo (FOR-DAD_06)</h4>
-                <p class="text-[11px] text-slate-500">Formato Excel institucional oficial con firmas y asignación formal</p>
-              </div>
-            </div>
-          </div>
-          <div class="pt-2 border-t border-blue-100 flex flex-wrap items-center gap-2">
-            <div class="flex-1 min-w-[200px]">
-              <select id="export-resguardo-select" class="w-full text-xs py-1.5 px-2 bg-white border border-blue-200 rounded-lg text-slate-700 focus:ring-blue-500">
-                <option value="">-- Seleccionar Resguardante --</option>
-              </select>
-            </div>
-            <button type="button" onclick="downloadResguardoOficialFromSelect()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5 btn-pop">
-              <i class="fa-solid fa-download"></i> Descargar Resguardo
-            </button>
-            <button type="button" id="btn-export-resguardo-queue" onclick="downloadResguardoOficialFromQueue()" class="hidden px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-xs transition flex items-center gap-1.5 btn-pop">
-              <i class="fa-solid fa-list-check"></i> Con Cola (<span id="export-resguardo-queue-count">0</span>)
-            </button>
-          </div>
-        </div>
       </div>
+
 
       <!-- Modal Footer -->
       <div class="bg-slate-50/90 px-5 py-3 border-t border-slate-200 flex items-center justify-end gap-2 flex-shrink-0">
@@ -1732,6 +1716,104 @@
     </div>
   </div>
 
+  <!-- MODAL: CÉDULA OFICIAL DE RESGUARDO (FOR-DAD_06) -->
+  <div id="modal-resguardo-oficial" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      <!-- Encabezado -->
+      <div class="bg-blue-50/80 px-6 py-4 border-b border-blue-100 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-base font-bold shadow-xs">
+            <i class="fa-solid fa-file-signature"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-800">Cédula Oficial de Resguardo</h3>
+            <p class="text-xs text-slate-500">Formato institucional FOR-DAD_06 (Excel)</p>
+          </div>
+        </div>
+        <button onclick="closeResguardoOficialModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg transition">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <!-- Contenido -->
+      <div class="p-6 space-y-4">
+        <div class="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-[11px] text-blue-900 flex items-start gap-2.5">
+          <i class="fa-solid fa-circle-info text-blue-600 mt-0.5 text-xs"></i>
+          <span>Genera la cédula oficial membretada con encabezados del Colegio de Bachilleres, firmas de entrega-recepción y datos oficiales del personal resguardante.</span>
+        </div>
+
+        <!-- Opción A: Por Resguardante -->
+        <div class="p-4 border border-slate-200 rounded-xl space-y-3 hover:border-blue-300 transition bg-slate-50/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-user-check text-blue-600"></i> Por Resguardante Asignado
+            </span>
+            <span class="text-[10px] uppercase font-bold text-slate-400">Todo su inventario</span>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Selecciona al personal:</label>
+            <select id="modal-resguardo-select" onchange="onResguardanteSelectedChange()" class="w-full text-xs py-2 px-3 bg-white border border-slate-300 rounded-xl text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <option value="">-- Seleccionar Resguardante --</option>
+            </select>
+            <p id="modal-resguardo-puesto-preview" class="text-[11px] text-slate-500 mt-1.5 italic hidden"></p>
+          </div>
+          <button type="button" onclick="downloadResguardoOficialFromModalSelect()" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 btn-pop shadow-xs">
+            <i class="fa-solid fa-file-arrow-down"></i> Descargar Cédula del Resguardante
+          </button>
+        </div>
+
+        <!-- Opción B: De la Cola de Impresión -->
+        <div id="modal-resguardo-queue-box" class="p-4 border border-slate-200 rounded-xl space-y-2.5 hover:border-indigo-300 transition bg-slate-50/40">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-tags text-indigo-600"></i> Con Activos de la Cola de Impresión
+            </span>
+            <span id="modal-resguardo-queue-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-700">0 activos</span>
+          </div>
+          <p class="text-[11px] text-slate-500">
+            Descarga la cédula oficial conteniendo exactamente los activos que tienes agregados en la cola de impresión.
+          </p>
+          <button type="button" id="btn-modal-resguardo-queue" onclick="downloadResguardoOficialFromModalQueue()" class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 btn-pop shadow-xs">
+            <i class="fa-solid fa-file-arrow-down"></i> Descargar Cédula con Cola de Impresión
+          </button>
+        </div>
+      </div>
+
+      <!-- Pie -->
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-end flex-shrink-0">
+        <button type="button" onclick="closeResguardoOficialModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition btn-pop">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMAR ELIMINACIÓN PERMANENTE -->
+  <div id="modal-confirm-delete-permanent" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col border border-slate-200/80 animate-in fade-in zoom-in duration-150">
+      <div class="p-6 text-center space-y-4">
+        <div class="w-14 h-14 mx-auto rounded-full bg-red-100 text-red-600 flex items-center justify-center text-2xl shadow-inner">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-800">¿Eliminar definitivamente este activo?</h3>
+          <p class="text-xs text-slate-500 mt-1">Esta acción borrará el registro de la base de datos de manera permanente e irreversible.</p>
+        </div>
+        <div id="confirm-delete-permanent-target" class="p-3 bg-red-50/60 border border-red-100 rounded-xl text-left text-xs text-slate-700">
+          <!-- Dinámico: descripción y código -->
+        </div>
+      </div>
+      <div class="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+        <button type="button" onclick="closeConfirmDeletePermanentModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition btn-pop">
+          Cancelar
+        </button>
+        <button type="button" id="btn-execute-delete-permanent" onclick="executeDeletePermanent()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 btn-pop shadow-sm shadow-red-600/30">
+          <i class="fa-solid fa-trash-can"></i> Eliminar definitivamente
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MENÚ FLOTANTE DE ACCIONES RÁPIDAS DE FILA -->
   <div id="row-action-menu" class="fixed hidden z-50 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[200px] text-xs transition animate-in fade-in zoom-in-95"></div>
 
@@ -1742,6 +1824,7 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=13"></script>
+  <script src="/app.js?v=14"></script>
 </body>
 </html>
+

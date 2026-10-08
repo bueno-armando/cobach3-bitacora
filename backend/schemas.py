@@ -20,6 +20,7 @@ class UbicacionOut(BaseModel):
 class ResguardanteOut(BaseModel):
     id: int
     nombre: str
+    puesto: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -32,19 +32,23 @@ def generar_resguardo_oficial_excel(
     ).filter(Activo.deleted_at == None)
 
     nombre_resguardante = "RESGUARDO GENERAL"
+    puesto_resguardante = ""
 
     if resguardante_id:
         resg = db.query(Resguardante).filter(Resguardante.id == resguardante_id).first()
         if not resg:
             raise HTTPException(status_code=404, detail="Resguardante no encontrado")
         nombre_resguardante = resg.nombre.strip().upper()
+        puesto_resguardante = (resg.puesto or "").strip().upper()
         activos = query.filter(Activo.resguardante_id == resguardante_id).order_by(Activo.id.asc()).all()
     elif activo_ids:
         activos = query.filter(Activo.id.in_(activo_ids)).order_by(Activo.id.asc()).all()
         # Si todos comparten el mismo resguardante, usarlo
-        resg_set = {a.resguardante.nombre.strip().upper() for a in activos if a.resguardante}
+        resg_set = {a.resguardante for a in activos if a.resguardante}
         if len(resg_set) == 1:
-            nombre_resguardante = list(resg_set)[0]
+            r = list(resg_set)[0]
+            nombre_resguardante = r.nombre.strip().upper()
+            puesto_resguardante = (r.puesto or "").strip().upper()
     else:
         raise HTTPException(status_code=400, detail="Debe especificar un resguardante_id o una lista de activo_ids.")
 
@@ -59,7 +63,7 @@ def generar_resguardo_oficial_excel(
     hoy_str = datetime.date.today().strftime("%d/%m/%Y")
     ws["G5"] = hoy_str
     ws["A10"] = nombre_resguardante
-    ws["C10"] = "PERSONAL"
+    ws["C10"] = puesto_resguardante
     ws["E10"] = ""
 
     # 4. Ajustar filas si hay más de 14 activos
@@ -103,3 +107,4 @@ def generar_resguardo_oficial_excel(
     wb.save(output)
     output.seek(0)
     return output
+

@@ -103,6 +103,28 @@ def test_generar_resguardo_oficial_excel(auth_admin_client):
     assert ws.cell(14, 1).value is not None
 
 
+def test_resguardante_puesto_in_resguardo_excel(auth_admin_client):
+    client = auth_admin_client
+    from backend.models import Resguardante
+
+    db = SessionLocal()
+    try:
+        resg = db.query(Resguardante).first()
+        assert resg is not None
+        resg.puesto = "COORDINADOR DE LABORATORIOS TEST"
+        db.commit()
+        resg_id = resg.id
+    finally:
+        db.close()
+
+    res = client.post("/api/reportes/resguardo-oficial", json={"resguardante_id": resg_id})
+    assert res.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(res.content))
+    ws = wb.active
+    assert ws["C10"].value == "COORDINADOR DE LABORATORIOS TEST"
+
+
+
 def test_bitacora_endpoint_filters(auth_admin_client):
     client = auth_admin_client
     res = client.get("/api/bitacora?limit=10")
@@ -117,3 +139,4 @@ def test_bitacora_endpoint_filters(auth_admin_client):
     assert "operacion" in first
     assert "usuario_nombre" in first
     assert "fecha_hora" in first
+

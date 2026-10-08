@@ -219,6 +219,22 @@ def import_excel_activos(
                 if existente_serie:
                     omitidos += 1
                     continue
+            else:
+                # 3. Para activos sin serie única ni código oficial:
+                # Omitir si ya existe un bien idéntico (misma descripción, marca, modelo, ubicación y resguardante)
+                if not codigo_oficial:
+                    existente_huella = db.query(Activo).filter(
+                        Activo.deleted_at == None,
+                        Activo.origen == origen_norm,
+                        Activo.descripcion == desc,
+                        Activo.marca == marca,
+                        Activo.modelo == modelo,
+                        Activo.ubicacion_id == ubi_id,
+                        Activo.resguardante_id == res_id
+                    ).first()
+                    if existente_huella:
+                        omitidos += 1
+                        continue
 
             # Determinación de código interno y estatus de etiqueta
             if origen_norm == "DIRECCION GENERAL":

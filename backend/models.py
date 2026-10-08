@@ -31,6 +31,7 @@ class Resguardante(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(200), unique=True, nullable=False, index=True)
+    puesto = Column(String(120), nullable=True)
 
     activos = relationship("Activo", back_populates="resguardante")
 

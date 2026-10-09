@@ -185,3 +185,38 @@ def test_patch_resguardante_puesto(auth_admin_client):
         db2.close()
 
 
+def test_bitacora_timezone_chihuahua(auth_admin_client):
+    from zoneinfo import ZoneInfo
+    from datetime import datetime
+    client = auth_admin_client
+
+    chihuahua_tz = ZoneInfo("America/Chihuahua")
+    before_call = datetime.now(chihuahua_tz).replace(tzinfo=None)
+
+    # Crear y eliminar activo para generar entradas de bitácora
+    create_res = client.post("/api/activos", json={
+        "descripcion": "TEST TIMEZONE CHIHUAHUA",
+        "origen": "GASTO"
+    })
+    assert create_res.status_code == 201
+    aid = create_res.json()["id"]
+
+    try:
+        del_res = client.delete(f"/api/activos/{aid}")
+        assert del_res.status_code == 200
+
+        after_call = datetime.now(chihuahua_tz).replace(tzinfo=None)
+
+        bit_res = client.get(f"/api/bitacora?activo_id={aid}")
+        assert bit_res.status_code == 200
+        items = bit_res.json()["items"]
+        assert len(items) >= 1
+
+        # Verificar que fecha_hora está dentro de la ventana de tiempo de Chihuahua
+        log_fh = datetime.fromisoformat(items[0]["fecha_hora"].replace("Z", ""))
+        assert abs((log_fh - before_call).total_seconds()) < 60
+        assert abs((after_call - log_fh).total_seconds()) < 60
+    finally:
+        client.delete(f"/api/activos/{aid}/permanente")
+
+

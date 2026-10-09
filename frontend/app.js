@@ -833,8 +833,8 @@ function openRowActionMenu(activoId, event) {
         <i class="fa-solid fa-camera text-purple-600 w-4 text-center"></i> Subir / Cambiar Foto
       </button>
       ${item.resguardante_id ? `
-        <button onclick="closeRowActionMenu(); downloadResguardoOficial({ resguardante_id: ${item.resguardante_id} })" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer" title="Generar cédula oficial de resguardo en Excel">
-          <i class="fa-solid fa-file-signature text-blue-600 w-4 text-center"></i> Resguardo Oficial
+        <button onclick="closeRowActionMenu(); downloadResguardoOficial({ resguardante_id: ${item.resguardante_id} })" class="w-full text-left px-3.5 py-2 hover:bg-blue-50 hover:text-blue-900 flex items-center gap-2.5 text-slate-700 transition cursor-pointer" title="Generar formato oficial de resguardo en Excel">
+          <i class="fa-solid fa-file-signature text-blue-600 w-4 text-center"></i> Resguardo
         </button>
       ` : ''}
     `;
@@ -909,8 +909,15 @@ function setTab(tabName) {
   state.page = 1;
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('bg-white', 'text-emerald-950', 'shadow');
-    btn.classList.add('text-emerald-100', 'hover:bg-emerald-800/60');
+    btn.classList.remove('bg-white', 'text-emerald-950', 'border-white', 'shadow-xs', 'font-bold');
+    btn.classList.add('bg-emerald-950/80', 'hover:bg-emerald-900', 'font-medium');
+    if (btn.id === 'tab-pendientes') {
+      btn.classList.add('border-amber-500/80', 'text-amber-200');
+    } else if (btn.id === 'tab-discrepancias') {
+      btn.classList.add('border-amber-500/80', 'text-amber-300');
+    } else {
+      btn.classList.add('border-emerald-600/80', 'text-emerald-100');
+    }
   });
 
   const activeId = tabName === '' ? 'tab-all' :
@@ -922,12 +929,13 @@ function setTab(tabName) {
 
   const activeBtn = document.getElementById(activeId);
   if (activeBtn) {
-    activeBtn.classList.remove('text-emerald-100', 'hover:bg-emerald-800/60');
-    activeBtn.classList.add('bg-white', 'text-emerald-950', 'shadow');
+    activeBtn.classList.remove('bg-emerald-950/80', 'hover:bg-emerald-900', 'text-emerald-100', 'text-amber-200', 'text-amber-300', 'border-emerald-600/80', 'border-amber-500/80', 'font-medium');
+    activeBtn.classList.add('bg-white', 'text-emerald-950', 'border-white', 'shadow-xs', 'font-bold');
   }
 
   loadActivos();
 }
+
 
 let searchDebounceTimer = null;
 function debounceSearch() {
@@ -1284,8 +1292,8 @@ async function openDetailModal(id) {
 
     if (a.resguardante_id && (rol === 'admin' || rol === 'resguardo')) {
       detailButtons += `
-        <button onclick="downloadResguardoOficial({ resguardante_id: ${a.resguardante_id} })" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5" title="Generar y descargar Cédula Oficial FOR-DAD_06 en Excel">
-          <i class="fa-solid fa-file-signature"></i> Resguardo Oficial
+        <button onclick="downloadResguardoOficial({ resguardante_id: ${a.resguardante_id} })" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white font-semibold rounded-xl text-xs transition btn-pop flex items-center gap-1.5" title="Generar y descargar formato oficial de resguardo FOR-DAD_06 en Excel">
+          <i class="fa-solid fa-file-signature"></i> Resguardo
         </button>
       `;
     }
@@ -2285,7 +2293,7 @@ async function downloadResguardoOficial({ resguardante_id = null, activo_ids = n
     a.click();
     a.remove();
     window.URL.revokeObjectURL(blobUrl);
-    showToast('Cédula oficial descargada correctamente');
+    showToast('Resguardo descargado correctamente');
   } catch (err) {
     console.error('Error generando resguardo:', err);
     showToast(err.message, true);
@@ -2883,7 +2891,11 @@ async function submitImportExcel(e) {
 function formatDateTime(dateStr) {
   if (!dateStr) return '-';
   try {
-    const d = new Date(dateStr);
+    let s = String(dateStr).trim().replace(' ', 'T');
+    if (s.endsWith('Z')) {
+      s = s.slice(0, -1);
+    }
+    const d = new Date(s);
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleString('es-MX', {
       year: 'numeric',
@@ -2896,6 +2908,7 @@ function formatDateTime(dateStr) {
     return dateStr;
   }
 }
+
 
 // =============================================================
 // MÓDULO: PAPELERA DE RECICLAJE (SOFT-DELETE)

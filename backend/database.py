@@ -52,3 +52,16 @@ def ensure_schema_migrations(eng=engine):
                 conn.execute(text("ALTER TABLE resguardantes ADD COLUMN puesto VARCHAR(120)"))
                 conn.commit()
 
+    # Migración de zona horaria: convertir registros anteriores de UTC a Chihuahua (UTC-6)
+    with eng.connect() as conn:
+        conn.execute(text("CREATE TABLE IF NOT EXISTS _system_meta (key VARCHAR(50) PRIMARY KEY, value TEXT)"))
+        conn.commit()
+        migrated = conn.execute(text("SELECT value FROM _system_meta WHERE key = 'bitacora_tz_migrated_chihuahua'")).fetchone()
+        if not migrated:
+            if "bitacora_logs" in table_names:
+                conn.execute(text("UPDATE bitacora_logs SET fecha_hora = datetime(fecha_hora, '-6 hours') WHERE fecha_hora IS NOT NULL"))
+            if "activos" in table_names:
+                conn.execute(text("UPDATE activos SET deleted_at = datetime(deleted_at, '-6 hours') WHERE deleted_at IS NOT NULL"))
+            conn.execute(text("INSERT INTO _system_meta (key, value) VALUES ('bitacora_tz_migrated_chihuahua', '1')"))
+            conn.commit()
+

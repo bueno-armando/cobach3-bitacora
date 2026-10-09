@@ -1,7 +1,15 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 from backend.models import BitacoraLog, Usuario
+
+TZ_CHIHUAHUA = ZoneInfo("America/Chihuahua")
+
+
+def get_chihuahua_now() -> datetime:
+    """Retorna la fecha y hora actual en la zona horaria de Chihuahua (UTC-6) sin tzinfo para almacenamiento uniforme."""
+    return datetime.now(TZ_CHIHUAHUA).replace(tzinfo=None)
 
 
 def registrar_bitacora(
@@ -21,7 +29,7 @@ def registrar_bitacora(
     u_rol = usuario.rol if usuario else "sistema"
 
     log_entry = BitacoraLog(
-        fecha_hora=datetime.now(timezone.utc),
+        fecha_hora=get_chihuahua_now(),
         usuario_id=u_id,
         usuario_nombre=u_nombre,
         usuario_rol=u_rol,
@@ -35,3 +43,4 @@ def registrar_bitacora(
     db.commit()
     db.refresh(log_entry)
     return log_entry
+

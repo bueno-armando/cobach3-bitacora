@@ -28,7 +28,7 @@ from backend.schemas import (
     ActualizarCondicionRequest,
     ActivoPapeleraItem
 )
-from backend.audit import registrar_bitacora
+from backend.audit import registrar_bitacora, get_chihuahua_now
 
 
 def get_activos(
@@ -512,7 +512,7 @@ def delete_activo(db: Session, activo_id: int, current_user: Optional[Usuario] =
 
     desc = activo.descripcion
     cod = activo.codigo_interno
-    activo.deleted_at = datetime.now(timezone.utc)
+    activo.deleted_at = get_chihuahua_now()
     activo.deleted_by = current_user.username if current_user else "admin"
     db.commit()
 

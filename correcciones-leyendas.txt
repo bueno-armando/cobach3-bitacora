@@ -1,0 +1,12 @@
+- "Código etiqueta (D.G): Asignado por Dirección General" - cambiar Dirección General por "Bienes Patrimoniales"
+- Menú:
+ - cambiar texto "Oficiales" por "Con etiqueta B.P" y "Pendientes" por "Sin etiqueta B.P"
+ - cambiar botón de filtro "Código Etiqueta (D.G)" por "Código Etiqueta (B.P)"
+ - cambiar botón de filtro "Discrepancias (D.G)" por "Discrepancias (B.P)"
+- Ventanas ficha técnica y editar:
+    - En editar activo que aparezca: nombre/Código
+- En vista de fotos de activos: cambiar texto del botón "Eliminar" por "Eliminar Foto"
+- En modal de edición del activo: 
+    - cambiar texto del botón "Quitar" por "Eliminar Foto"
+    - cambiar texto "Código oficial (etiqueta verde)" por "Código (Etiqueta Verde)" 
+    - en dropdown de estado físico/operativo: cambiar "Baja Oficial" por "Baja"

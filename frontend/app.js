@@ -469,7 +469,7 @@ function renderTable(items) {
     if (item.estatus_etiqueta === 'ETIQUETADO_OFICIAL' && item.codigo_oficial) {
       invHtml = `
         <div class="space-y-0.5">
-          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" title="Código Oficial (Etiqueta Verde)">
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" title="Código (Etiqueta Verde)">
             <i class="fa-solid fa-tag mr-1 text-emerald-600 text-[8px]"></i> #${item.codigo_oficial}
           </span>
           <div class="text-[10px] font-mono text-slate-400 leading-none">${item.codigo_interno}</div>
@@ -580,7 +580,7 @@ function renderTable(items) {
           <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1.5 leading-none flex-wrap">
             ${origenPill}
             ${getCondicionBadge(item.condicion_actual || item.condicion || item.condicion_dg)}
-            ${item.tiene_discrepancia_dg ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs" title="Presenta discrepancia física o de estatus con Dirección General"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Discrepancia D.G.</span>' : ''}
+            ${item.tiene_discrepancia_dg ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-300 shadow-2xs" title="Presenta discrepancia física o de estatus con Bienes Patrimoniales"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Discrepancia (B.P)</span>' : ''}
           </div>
         </td>
 
@@ -1045,7 +1045,7 @@ function updatePriceIndicator() {
     ind.innerHTML = `
       <i class="fa-solid fa-building-columns text-emerald-700 text-sm flex-shrink-0"></i>
       <div>
-        <span class="font-bold">Código Etiqueta (D.G):</span> Asignado por Dirección General. Portará Etiqueta Verde Oficial con Código numérico. Consecutivo <code class="font-mono font-bold bg-emerald-100 px-1 py-0.5 rounded">PL3-DG-XXXXXX</code>.
+        <span class="font-bold">Código Etiqueta (B.P):</span> Asignado por Bienes Patrimoniales. Portará Etiqueta Verde Oficial con Código numérico. Consecutivo <code class="font-mono font-bold bg-emerald-100 px-1 py-0.5 rounded">PL3-DG-XXXXXX</code>.
       </div>
     `;
   }
@@ -1053,7 +1053,9 @@ function updatePriceIndicator() {
 
 function openCreateModal() {
   document.getElementById('asset-form-id').value = '';
-  document.getElementById('asset-form-title').textContent = 'Registrar Nuevo Activo';
+  const formTitle = document.getElementById('asset-form-title');
+  formTitle.textContent = 'Registrar Nuevo Activo';
+  formTitle.removeAttribute('title');
   document.getElementById('asset-form-icon').className = 'fa-solid fa-plus-circle text-amber-400 text-lg';
   document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Registrar Activo';
   
@@ -1099,7 +1101,9 @@ async function openEditModal(id) {
     const a = await res.json();
 
     document.getElementById('asset-form-id').value = a.id;
-    document.getElementById('asset-form-title').textContent = `Editar Activo: ${a.codigo_interno}`;
+    const formTitle = document.getElementById('asset-form-title');
+    formTitle.textContent = `Editar Activo: ${a.descripcion} / ${a.codigo_interno}`;
+    formTitle.title = `${a.descripcion} / ${a.codigo_interno}`;
     document.getElementById('asset-form-icon').className = 'fa-solid fa-pen-to-square text-amber-400 text-lg';
     document.getElementById('btn-save-asset').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios';
 
@@ -1313,7 +1317,7 @@ async function openDetailModal(id) {
       if (rol === 'admin') {
         photoActions += `
           <button onclick="removeActivoPhoto(${a.id})" class="px-2.5 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg text-[11px] font-medium transition flex items-center gap-1">
-            <i class="fa-solid fa-trash"></i> Quitar
+            <i class="fa-solid fa-trash"></i> Eliminar Foto
           </button>
         `;
       }
@@ -2138,7 +2142,7 @@ function openExportModal() {
     let filterLabel = state.tab ? `Sección: ${state.tab}` : '';
     if (state.q && state.q.trim()) filterLabel += (filterLabel ? ' + ' : '') + `"${state.q.trim()}"`;
     if (state.condicion) filterLabel += (filterLabel ? ' + ' : '') + `Condición: ${state.condicion}`;
-    if (state.discrepancias) filterLabel += (filterLabel ? ' + ' : '') + 'Con Discrepancia D.G.';
+    if (state.discrepancias) filterLabel += (filterLabel ? ' + ' : '') + 'Con Discrepancia (B.P)';
     if (state.tab === 'PENDIENTES') filterLabel += ' (Pendientes)';
 
     filteredTitle.textContent = `Exportar Vista Filtrada (${(state.totalItems || 0).toLocaleString()} activos)`;

@@ -214,9 +214,9 @@
           <div class="bg-emerald-950/80 border border-emerald-800/80 rounded-xl px-3 py-0.5 flex items-center gap-2 sm:gap-3 text-xs">
             <span class="text-slate-300">Total: <strong id="stat-total" class="text-white font-bold">-</strong></span>
             <span class="text-emerald-700">•</span>
-            <span class="text-emerald-300">Oficiales: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
+            <span class="text-emerald-300">Con etiqueta B.P: <strong id="stat-oficial" class="text-emerald-200 font-bold">-</strong></span>
             <span class="text-emerald-700">•</span>
-            <span class="text-amber-300">Pendientes: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
+            <span class="text-amber-300">Sin etiqueta B.P: <strong id="stat-pendientes" class="text-amber-200 font-bold">-</strong></span>
           </div>
 
           <!-- Herramientas Administrativas: Bitácora y Papelera -->
@@ -312,14 +312,14 @@
         <button onclick="setTab('CONTROL ADMINISTRATIVO')" id="tab-ca" class="tab-btn btn-pop px-3 py-1 rounded-xl text-xs font-medium transition whitespace-nowrap bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 text-emerald-100" title="Control Administrativo - Etiqueta Genérica D.B.P ($3,001 a $7,900)">
           <i class="fa-solid fa-users-gear mr-1 text-emerald-400"></i> Control Admin ($3,001 - $7,900)
         </button>
-        <button onclick="setTab('DIRECCION GENERAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-xl text-xs font-medium transition whitespace-nowrap bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 text-emerald-100" title="Activos con Código de Etiqueta de Dirección General ($7,901+)">
-          <i class="fa-solid fa-building-columns mr-1 text-emerald-400"></i> Código Etiqueta (D.G)
+        <button onclick="setTab('DIRECCION GENERAL')" id="tab-central" class="tab-btn btn-pop px-3 py-1 rounded-xl text-xs font-medium transition whitespace-nowrap bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-600/80 text-emerald-100" title="Activos con Código de Etiqueta de Bienes Patrimoniales ($7,901+)">
+          <i class="fa-solid fa-building-columns mr-1 text-emerald-400"></i> Código Etiqueta (B.P)
         </button>
         <button onclick="setTab('PENDIENTES')" id="tab-pendientes" class="tab-btn btn-pop px-3 py-1 rounded-xl text-xs font-medium transition whitespace-nowrap bg-emerald-950/80 hover:bg-emerald-900 border border-amber-500/80 text-amber-200" title="Activos en espera de etiqueta verde de Bienes Patrimoniales">
           <i class="fa-solid fa-tags mr-1 text-amber-400"></i> Pendientes Etiqueta
         </button>
-        <button onclick="setTab('DISCREPANCIAS')" id="tab-discrepancias" class="tab-btn btn-pop px-3 py-1 rounded-xl text-xs font-medium transition whitespace-nowrap bg-emerald-950/80 hover:bg-emerald-900 border border-amber-500/80 text-amber-300" title="Activos con deterioro, en desuso o discrepancias con el registro de Dirección General">
-          <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-400"></i> Discrepancias D.G.
+        <button onclick="setTab('DISCREPANCIAS')" id="tab-discrepancias" class="tab-btn btn-pop px-3 py-1 rounded-xl text-xs font-medium transition whitespace-nowrap bg-emerald-950/80 hover:bg-emerald-900 border border-amber-500/80 text-amber-300" title="Activos con deterioro, en desuso o discrepancias con el registro de Bienes Patrimoniales">
+          <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-400"></i> Discrepancias (B.P)
         </button>
       </div>
     </nav>
@@ -392,10 +392,10 @@
             id="filter-discrepancia" 
             onchange="applyFilters()" 
             class="py-1.5 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition text-slate-700 font-medium"
-            title="Filtrar por discrepancia de estatus o condición con Dirección General"
+            title="Filtrar por discrepancia de estatus o condición con Bienes Patrimoniales"
           >
             <option value="">Discrepancia: Todas</option>
-            <option value="con_discrepancia">⚠️ Con Discrepancia D.G.</option>
+            <option value="con_discrepancia">⚠️ Con Discrepancia (B.P)</option>
           </select>
 
           <!-- Botón Restablecer / Limpiar Filtros -->
@@ -559,7 +559,7 @@
             <i id="asset-form-icon" class="fa-solid fa-plus text-amber-700"></i>
           </div>
           <div>
-            <h3 id="asset-form-title" class="text-sm sm:text-base font-bold text-slate-900">Registrar Nuevo Activo</h3>
+            <h3 id="asset-form-title" class="text-sm sm:text-base font-bold text-slate-900 truncate max-w-[400px] sm:max-w-[500px]">Registrar Nuevo Activo</h3>
             <p class="text-[11px] text-slate-500">Captura de información técnica y ciclo de vida</p>
           </div>
         </div>
@@ -607,7 +607,7 @@
               <option value="OPERATIVO">🟢 Operativo (En Uso)</option>
               <option value="EN_DESUSO">🔴 En Desuso / Propuesto para Descarte</option>
               <option value="EN_REPARACION">🟡 En Reparación / Mantenimiento</option>
-              <option value="BAJA">⚪ Baja Oficial</option>
+              <option value="BAJA">⚪ Baja</option>
             </select>
           </div>
 
@@ -644,7 +644,7 @@
           </div>
 
           <div>
-            <label class="block font-semibold text-slate-700 uppercase mb-1 text-xs">Código Oficial (Etiqueta Verde)</label>
+            <label class="block font-semibold text-slate-700 uppercase mb-1 text-xs">Código (Etiqueta Verde)</label>
             <input type="text" id="form-codigo-oficial" placeholder="Ej. 42100 (Dejar vacío si no tiene)" class="w-full p-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-800">
             <span class="text-[10px] text-slate-400">Solo si ya cuenta físicamente con etiqueta verde pegada.</span>
           </div>
@@ -1091,7 +1091,7 @@
             </label>
             <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-950">
               <input type="checkbox" name="export-col" value="tiene_discrepancia" checked class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-              <span class="font-semibold text-amber-800">Discrepancia D.G.</span>
+              <span class="font-semibold text-amber-800">Discrepancia (B.P)</span>
             </label>
           </div>
         </div>
@@ -1246,7 +1246,7 @@
             <i class="fa-solid fa-camera"></i> Cambiar Foto
           </button>
           <button id="lightbox-btn-delete" onclick="deletePhotoFromLightbox()" class="hidden px-2.5 py-1 bg-red-600/80 hover:bg-red-600 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition">
-            <i class="fa-solid fa-trash"></i> Eliminar
+            <i class="fa-solid fa-trash"></i> Eliminar Foto
           </button>
           <a id="lightbox-download" href="" download class="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 px-2 py-1">
             <i class="fa-solid fa-download"></i> Descargar
@@ -1850,7 +1850,7 @@
   </div>
 
   <!-- JAVASCRIPT DEL CLIENTE -->
-  <script src="/app.js?v=16"></script>
+  <script src="/app.js?v=17"></script>
 
 </body>
 </html>
